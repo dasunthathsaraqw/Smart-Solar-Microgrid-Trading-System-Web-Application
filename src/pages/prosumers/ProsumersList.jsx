@@ -2,6 +2,7 @@
 // Defaults to the Pending Activation tab, the most relevant view for the Backoffice workflow.
 import { useCallback, useEffect, useState } from "react";
 import { deactivateProsumer, getProsumers, reactivateProsumer } from "../../api/prosumers";
+import { useConfirm } from "../../components/confirmContext";
 import StatusBadge from "./StatusBadge";
 
 const TABS = [
@@ -11,6 +12,7 @@ const TABS = [
 ];
 
 export default function ProsumersList({ onAdd, onView, onNotify }) {
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("pending");
   const [prosumers, setProsumers] = useState([]);
   const [search, setSearch] = useState("");
@@ -42,7 +44,13 @@ export default function ProsumersList({ onAdd, onView, onNotify }) {
     : prosumers;
 
   async function handleDeactivate(nic) {
-    if (!window.confirm(`Deactivate prosumer ${nic}?`)) return;
+    const confirmed = await confirm({
+      title: "Deactivate Prosumer",
+      message: `Are you sure you want to deactivate prosumer ${nic}?`,
+      confirmLabel: "Deactivate",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deactivateProsumer(nic);
       onNotify("Prosumer deactivated", "success");
@@ -53,7 +61,12 @@ export default function ProsumersList({ onAdd, onView, onNotify }) {
   }
 
   async function handleReactivate(nic, isApprove) {
-    if (!window.confirm(isApprove ? `Approve prosumer ${nic}?` : `Reactivate prosumer ${nic}?`)) return;
+    const confirmed = await confirm({
+      title: isApprove ? "Approve Prosumer" : "Reactivate Prosumer",
+      message: isApprove ? `Approve prosumer ${nic}?` : `Reactivate prosumer ${nic}?`,
+      confirmLabel: isApprove ? "Approve" : "Reactivate",
+    });
+    if (!confirmed) return;
     try {
       await reactivateProsumer(nic);
       onNotify(isApprove ? "Prosumer approved" : "Prosumer reactivated", "success");
