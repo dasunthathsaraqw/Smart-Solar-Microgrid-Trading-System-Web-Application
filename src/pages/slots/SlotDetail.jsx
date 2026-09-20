@@ -3,6 +3,7 @@
 // enforces this rule server-side regardless of what this view allows.
 import { useCallback, useEffect, useState } from "react";
 import { deleteSlot, getSlotById, updateSlot } from "../../api/slots";
+import { useConfirm } from "../../components/confirmContext";
 import SlotStatusBadge from "./SlotStatusBadge";
 
 function toTimeInputValue(isoString) {
@@ -10,6 +11,7 @@ function toTimeInputValue(isoString) {
 }
 
 export default function SlotDetail({ id, onBack, onNotify }) {
+  const confirm = useConfirm();
   const [slot, setSlot] = useState(null);
   const [form, setForm] = useState({ startTime: "", endTime: "", capacityKw: "" });
   const [isEditing, setIsEditing] = useState(false);
@@ -72,7 +74,13 @@ export default function SlotDetail({ id, onBack, onNotify }) {
   }
 
   async function handleDelete() {
-    if (!window.confirm("Delete this slot?")) return;
+    const confirmed = await confirm({
+      title: "Delete Slot",
+      message: "This will permanently delete the slot. This cannot be undone.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteSlot(id);
       onNotify("Slot deleted", "success");
