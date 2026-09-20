@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
+import ProsumersPage from "./prosumers/ProsumersPage";
 
 const NAV_ITEMS = [
   "Prosumer Management",
@@ -20,12 +21,18 @@ export default function DashboardBackoffice() {
     <div className="flex min-h-screen flex-col bg-brand-white-soft">
       <Navbar title="Backoffice" />
 
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col md:flex-row">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col md:flex-row">
         <Sidebar items={NAV_ITEMS} activeItem={activeItem} onSelect={setActiveItem} />
 
         <main className="flex-1 px-6 py-10">
-          <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
-          <h2 className="text-2xl font-semibold text-brand-black">this is the {activeItem}</h2>
+          {activeItem === "Prosumer Management" ? (
+            <ProsumersPage />
+          ) : (
+            <>
+              <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
+              <h2 className="text-2xl font-semibold text-brand-black">this is the {activeItem}</h2>
+            </>
+          )}
         </main>
       </div>
 
