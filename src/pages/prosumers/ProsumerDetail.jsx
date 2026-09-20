@@ -7,6 +7,7 @@ import {
   reactivateProsumer,
   updateProsumer,
 } from "../../api/prosumers";
+import { useConfirm } from "../../components/confirmContext";
 import StatusBadge from "./StatusBadge";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -20,6 +21,7 @@ function validate(form) {
 }
 
 export default function ProsumerDetail({ nic, onBack, onNotify }) {
+  const confirm = useConfirm();
   const [prosumer, setProsumer] = useState(null);
   const [form, setForm] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -74,14 +76,25 @@ export default function ProsumerDetail({ nic, onBack, onNotify }) {
   }
 
   async function handleDeactivate() {
-    if (!window.confirm(`Deactivate prosumer ${nic}?`)) return;
+    const confirmed = await confirm({
+      title: "Deactivate Prosumer",
+      message: `Are you sure you want to deactivate prosumer ${nic}?`,
+      confirmLabel: "Deactivate",
+      destructive: true,
+    });
+    if (!confirmed) return;
     await deactivateProsumer(nic);
     onNotify("Prosumer deactivated", "success");
     load();
   }
 
   async function handleReactivate() {
-    if (!window.confirm(`Reactivate prosumer ${nic}?`)) return;
+    const confirmed = await confirm({
+      title: "Reactivate Prosumer",
+      message: `Reactivate prosumer ${nic}?`,
+      confirmLabel: "Reactivate",
+    });
+    if (!confirmed) return;
     await reactivateProsumer(nic);
     onNotify("Prosumer reactivated", "success");
     load();
