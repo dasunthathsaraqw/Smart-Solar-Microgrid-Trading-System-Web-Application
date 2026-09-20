@@ -23,7 +23,10 @@ apiClient.interceptors.response.use(
       window.location.href = "/login";
     }
     const message =
-      error.response?.data?.message || error.message || "Something went wrong. Please try again.";
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Something went wrong. Please try again.";
     return Promise.reject(new Error(message));
   }
 );
