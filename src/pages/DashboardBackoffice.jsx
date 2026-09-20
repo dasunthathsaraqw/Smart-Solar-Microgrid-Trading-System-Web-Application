@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
 import ProsumersPage from "./prosumers/ProsumersPage";
+import StationsPage from "./stations/StationsPage";
 
 const NAV_ITEMS = [
   "Prosumer Management",
@@ -27,6 +28,8 @@ export default function DashboardBackoffice() {
         <main className="flex-1 px-6 py-10">
           {activeItem === "Prosumer Management" ? (
             <ProsumersPage />
+          ) : activeItem === "Station Management" ? (
+            <StationsPage />
           ) : (
             <>
               <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
