@@ -8,6 +8,7 @@ import {
   reactivateStation,
   updateStation,
 } from "../../api/stations";
+import { useConfirm } from "../../components/confirmContext";
 import StationStatusBadge from "./StationStatusBadge";
 
 function validate(form) {
@@ -24,6 +25,7 @@ function validate(form) {
 }
 
 export default function StationDetail({ id, onBack, onNotify }) {
+  const confirm = useConfirm();
   const [station, setStation] = useState(null);
   const [form, setForm] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -79,7 +81,13 @@ export default function StationDetail({ id, onBack, onNotify }) {
   }
 
   async function handleDeactivate() {
-    if (!window.confirm("Deactivate this station?")) return;
+    const confirmed = await confirm({
+      title: "Deactivate Station",
+      message: "Are you sure you want to deactivate this station?",
+      confirmLabel: "Deactivate",
+      destructive: true,
+    });
+    if (!confirmed) return;
     setError("");
     try {
       await deactivateStation(id);
@@ -92,7 +100,8 @@ export default function StationDetail({ id, onBack, onNotify }) {
   }
 
   async function handleReactivate() {
-    if (!window.confirm("Reactivate this station?")) return;
+    const confirmed = await confirm({ title: "Reactivate Station", message: "Reactivate this station?", confirmLabel: "Reactivate" });
+    if (!confirmed) return;
     await reactivateStation(id);
     onNotify("Station reactivated", "success");
     load();

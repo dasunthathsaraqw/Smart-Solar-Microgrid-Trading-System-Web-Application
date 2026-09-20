@@ -2,6 +2,7 @@
 // a total count, and row actions. Defaults to the Active tab.
 import { useCallback, useEffect, useState } from "react";
 import { deactivateStation, getStations, reactivateStation } from "../../api/stations";
+import { useConfirm } from "../../components/confirmContext";
 import StationStatusBadge from "./StationStatusBadge";
 
 const TABS = [
@@ -10,6 +11,7 @@ const TABS = [
 ];
 
 export default function StationsList({ onAdd, onView, onManageSlots, onNotify }) {
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState("active");
   const [stations, setStations] = useState([]);
   const [search, setSearch] = useState("");
@@ -39,7 +41,13 @@ export default function StationsList({ onAdd, onView, onManageSlots, onNotify })
   const filtered = term ? stations.filter((s) => s.stationName.toLowerCase().includes(term)) : stations;
 
   async function handleDeactivate(id) {
-    if (!window.confirm("Deactivate this station?")) return;
+    const confirmed = await confirm({
+      title: "Deactivate Station",
+      message: "Are you sure you want to deactivate this station?",
+      confirmLabel: "Deactivate",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deactivateStation(id);
       onNotify("Station deactivated", "success");
@@ -50,7 +58,8 @@ export default function StationsList({ onAdd, onView, onManageSlots, onNotify })
   }
 
   async function handleReactivate(id) {
-    if (!window.confirm("Reactivate this station?")) return;
+    const confirmed = await confirm({ title: "Reactivate Station", message: "Reactivate this station?", confirmLabel: "Reactivate" });
+    if (!confirmed) return;
     try {
       await reactivateStation(id);
       onNotify("Station reactivated", "success");
