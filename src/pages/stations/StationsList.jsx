@@ -9,7 +9,7 @@ const TABS = [
   { key: "deactivated", label: "Deactivated" },
 ];
 
-export default function StationsList({ onAdd, onView, onNotify }) {
+export default function StationsList({ onAdd, onView, onManageSlots, onNotify }) {
   const [activeTab, setActiveTab] = useState("active");
   const [stations, setStations] = useState([]);
   const [search, setSearch] = useState("");
@@ -146,6 +146,12 @@ export default function StationsList({ onAdd, onView, onNotify }) {
                         className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
                       >
                         View
+                      </button>
+                      <button
+                        onClick={() => onManageSlots(s.id)}
+                        className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+                      >
+                        Manage Slots
                       </button>
                       {s.isActive ? (
                         <button
