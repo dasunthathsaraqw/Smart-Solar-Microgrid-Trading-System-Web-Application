@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getStations } from "../../api/stations";
 import { deleteSlot, getSlots } from "../../api/slots";
+import { useConfirm } from "../../components/confirmContext";
 import SlotStatusBadge from "./SlotStatusBadge";
 
 const TABS = [
@@ -21,6 +22,7 @@ function formatDuration(startTime, endTime) {
 }
 
 export default function SlotsList({ initialStationId, onAdd, onView, onNotify }) {
+  const confirm = useConfirm();
   const [stations, setStations] = useState([]);
   const [selectedStationId, setSelectedStationId] = useState(initialStationId || "");
   const [activeTab, setActiveTab] = useState("available");
@@ -61,7 +63,13 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
   const filtered = term ? slots.filter((s) => s.stationName.toLowerCase().includes(term)) : slots;
 
   async function handleDelete(id) {
-    if (!window.confirm("Delete this slot?")) return;
+    const confirmed = await confirm({
+      title: "Delete Slot",
+      message: "This will permanently delete the slot. This cannot be undone.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
     try {
       await deleteSlot(id);
       onNotify("Slot deleted", "success");
