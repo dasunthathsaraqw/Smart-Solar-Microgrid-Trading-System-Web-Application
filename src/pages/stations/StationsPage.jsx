@@ -6,7 +6,7 @@ import StationCreateForm from "./StationCreateForm";
 import StationDetail from "./StationDetail";
 import StationsList from "./StationsList";
 
-export default function StationsPage() {
+export default function StationsPage({ onManageSlots }) {
   const [view, setView] = useState("list");
   const [selectedId, setSelectedId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -28,6 +28,7 @@ export default function StationsPage() {
             setSelectedId(id);
             setView("detail");
           }}
+          onManageSlots={onManageSlots}
           onNotify={notify}
         />
       )}
