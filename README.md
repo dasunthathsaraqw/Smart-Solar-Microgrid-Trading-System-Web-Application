@@ -1,16 +1,38 @@
-# React + Vite
+# Smart Solar Microgrid — Web Application (Stage 1)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite + Tailwind CSS frontend for the Backoffice and Grid Operator roles.
 
-Currently, two official plugins are available:
+## Pages
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `/` — landing page (redirects to a dashboard if already logged in)
+- `/login` — login form
+- `/create-account` — Backoffice-only account creation form
+- `/dashboard/backoffice` — Backoffice dashboard shell
+- `/dashboard/operator` — Grid Operator dashboard shell
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+cp .env.example .env   # adjust VITE_API_BASE if the backend runs on a different port
+npm run dev
+```
 
-## Expanding the ESLint configuration
+The dev server prints a local URL (typically `http://localhost:5173`).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Configuration
+
+`VITE_API_BASE` (see `.env.example`) points at the backend API, e.g. `https://localhost:7031/api`.
+Since the backend uses the ASP.NET Core HTTPS dev certificate, trust it once with:
+
+```bash
+dotnet dev-certs https --trust
+```
+
+Otherwise the browser will block requests to `https://localhost:7031`.
+
+## Default seed login
+
+- Email: `admin@smartsolar.com`
+- Password: `Admin@123`
+- Role: `Backoffice`
