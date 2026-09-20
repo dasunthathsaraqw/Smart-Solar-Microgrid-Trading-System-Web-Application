@@ -6,17 +6,24 @@ import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
 import ProsumersPage from "./prosumers/ProsumersPage";
 import StationsPage from "./stations/StationsPage";
+import SlotsPage from "./slots/SlotsPage";
 
 const NAV_ITEMS = [
   "Prosumer Management",
   "Station Management",
-  "Reservation Management",
+  "Slot Management",
   "User Management",
 ];
 
 export default function DashboardBackoffice() {
   const user = getUser();
   const [activeItem, setActiveItem] = useState(NAV_ITEMS[0]);
+  const [slotsStationId, setSlotsStationId] = useState(null);
+
+  function handleManageSlots(stationId) {
+    setSlotsStationId(stationId);
+    setActiveItem("Slot Management");
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-brand-white-soft">
@@ -29,7 +36,9 @@ export default function DashboardBackoffice() {
           {activeItem === "Prosumer Management" ? (
             <ProsumersPage />
           ) : activeItem === "Station Management" ? (
-            <StationsPage />
+            <StationsPage onManageSlots={handleManageSlots} />
+          ) : activeItem === "Slot Management" ? (
+            <SlotsPage initialStationId={slotsStationId} />
           ) : (
             <>
               <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
