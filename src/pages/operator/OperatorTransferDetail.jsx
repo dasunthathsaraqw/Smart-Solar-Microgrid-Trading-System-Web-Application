@@ -6,6 +6,7 @@ export default function OperatorTransferDetail({ reservationId, onClose }) {
   const [reservation, setReservation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryTrigger, setRetryTrigger] = useState(0);
 
   useEffect(() => {
     if (!reservationId) return;
@@ -38,7 +39,7 @@ export default function OperatorTransferDetail({ reservationId, onClose }) {
     return () => {
       isMounted = false;
     };
-  }, [reservationId]);
+  }, [reservationId, retryTrigger]);
 
   if (!reservationId) return null;
 
@@ -65,6 +66,13 @@ export default function OperatorTransferDetail({ reservationId, onClose }) {
           ) : error ? (
             <div className="rounded-lg border border-red-500 bg-red-50 p-6 text-center">
               <p className="font-medium text-red-700">{error}</p>
+              <button
+                type="button"
+                onClick={() => setRetryTrigger((c) => c + 1)}
+                className="mt-4 rounded-md border border-red-500 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-100"
+              >
+                Retry
+              </button>
             </div>
           ) : reservation ? (
             <div className="space-y-6">

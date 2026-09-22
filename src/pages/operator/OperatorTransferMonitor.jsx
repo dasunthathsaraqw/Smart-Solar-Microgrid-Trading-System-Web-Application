@@ -17,7 +17,8 @@ export default function OperatorTransferMonitor() {
     isUnassigned,
     isLoading: contextLoading,
     error: contextError,
-    refreshOperatorContext
+    refreshOperatorContext,
+    notify
   } = useOperatorContext();
 
   const [activeTab, setActiveTab] = useState("Approved");
@@ -44,7 +45,7 @@ export default function OperatorTransferMonitor() {
       setReservations(Array.isArray(data) ? data : data.items || []);
     } catch (err) {
       if (err.response?.status === 403) {
-        setTransfersError(err.response?.data?.message || "You do not have access to this station.");
+        setTransfersError("Access denied. Your station assignment may have changed.");
       } else {
         setTransfersError(err.message || "Failed to load transfers.");
       }
@@ -62,10 +63,12 @@ export default function OperatorTransferMonitor() {
   }, [activeTab, contextLoading, loadTransfers]);
 
   async function handleApprove(id) {
+    if (isProcessing) return;
     setIsProcessing(id);
     setActionError("");
     try {
       await approveReservation(id);
+      notify("Reservation approved and ready for QR transfer.", "success");
       await loadTransfers(activeTab); // Refresh current list
     } catch (err) {
       setActionError(err.response?.data?.message || err.message || "Failed to approve reservation.");
@@ -77,6 +80,7 @@ export default function OperatorTransferMonitor() {
   const handleRefresh = async () => {
     await refreshOperatorContext();
     await loadTransfers(activeTab);
+    notify("Transfer monitor refreshed.");
   };
 
   const isLoading = contextLoading || isTransfersLoading;
@@ -105,13 +109,15 @@ export default function OperatorTransferMonitor() {
         <OperatorUnassignedState />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">Error loading transfers</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {error.includes("Access denied") ? "Access Denied" : "Error loading transfers"}
+          </h3>
           <p className="mt-2 text-sm text-gray-600">{error}</p>
           <button
             onClick={handleRefresh}
             className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
           >
-            Retry
+            {error.includes("Access denied") ? "Refresh assignment" : "Retry"}
           </button>
         </div>
       ) : (
