@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getStations } from "../../api/stations";
 import { deleteSlot, getSlots } from "../../api/slots";
 import { useConfirm } from "../../components/confirmContext";
+import { formatLocalDate, formatLocalTime } from "../../utils/timeUtils";
 import SlotStatusBadge from "./SlotStatusBadge";
 
 const TABS = [
@@ -166,9 +167,9 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
                 return (
                   <tr key={s.id} className="border-t border-brand-border">
                     <td className="px-4 py-3">{s.stationName}</td>
-                    <td className="px-4 py-3">{new Date(s.slotDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">{new Date(s.startTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
-                    <td className="px-4 py-3">{new Date(s.endTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                    <td className="px-4 py-3">{formatLocalDate(s.startTime)}</td>
+                    <td className="px-4 py-3">{formatLocalTime(s.startTime)}</td>
+                    <td className="px-4 py-3">{formatLocalTime(s.endTime)}</td>
                     <td className="px-4 py-3">{formatDuration(s.startTime, s.endTime)}</td>
                     <td className="px-4 py-3">{s.capacityKw}</td>
                     <td className="px-4 py-3">

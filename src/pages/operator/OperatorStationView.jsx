@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getSlots } from "../../api/slots";
 import SlotStatusBadge from "../slots/SlotStatusBadge";
+import { formatLocalDate, formatLocalTime } from "../../utils/timeUtils";
 import { useOperatorContext } from "./OperatorContext";
 import OperatorUnassignedState from "./OperatorUnassignedState";
 
@@ -211,9 +212,9 @@ function SlotsTable({ slots }) {
         <tbody>
           {sortedSlots.map((slot) => (
             <tr key={slot.id} className="border-t border-brand-border">
-              <td className="px-4 py-3 sm:px-6 text-brand-black">{formatDate(slot.startTime)}</td>
-              <td className="px-4 py-3 text-brand-black">{formatTime(slot.startTime)}</td>
-              <td className="px-4 py-3 text-brand-black">{formatTime(slot.endTime)}</td>
+              <td className="px-4 py-3 sm:px-6 text-brand-black">{formatLocalDate(slot.startTime)}</td>
+              <td className="px-4 py-3 text-brand-black">{formatLocalTime(slot.startTime)}</td>
+              <td className="px-4 py-3 text-brand-black">{formatLocalTime(slot.endTime)}</td>
               <td className="px-4 py-3 text-brand-black">{slot.capacityKw} kW</td>
               <td className="px-4 py-3 sm:pr-6">
                 <SlotStatusBadge isBooked={slot.isBooked} endTime={slot.endTime} />
@@ -224,23 +225,6 @@ function SlotsTable({ slots }) {
       </table>
     </div>
   );
-}
-
-function formatDate(dateString) {
-  if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleDateString([], {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatTime(dateString) {
-  if (!dateString) return "N/A";
-  return new Date(dateString).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function LoadingStationView() {

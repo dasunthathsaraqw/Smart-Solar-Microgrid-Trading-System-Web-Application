@@ -4,11 +4,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { deleteSlot, getSlotById, updateSlot } from "../../api/slots";
 import { useConfirm } from "../../components/confirmContext";
+import { formatLocalDate, toLocalTimeInput, toUtcIsoString } from "../../utils/timeUtils";
 import SlotStatusBadge from "./SlotStatusBadge";
-
-function toTimeInputValue(isoString) {
-  return new Date(isoString).toISOString().slice(11, 16);
-}
 
 export default function SlotDetail({ id, expectedStationId, onBack, onNotify, onAccessDenied }) {
   const confirm = useConfirm();
@@ -34,8 +31,8 @@ export default function SlotDetail({ id, expectedStationId, onBack, onNotify, on
       }
       setSlot(data);
       setForm({
-        startTime: toTimeInputValue(data.startTime),
-        endTime: toTimeInputValue(data.endTime),
+        startTime: toLocalTimeInput(data.startTime),
+        endTime: toLocalTimeInput(data.endTime),
         capacityKw: data.capacityKw,
       });
     } catch (err) {
@@ -74,14 +71,14 @@ export default function SlotDetail({ id, expectedStationId, onBack, onNotify, on
     setIsSubmitting(true);
     try {
       const updated = await updateSlot(id, {
-        startTime: `${datePart}T${form.startTime}:00Z`,
-        endTime: `${datePart}T${form.endTime}:00Z`,
+        startTime: toUtcIsoString(datePart, form.startTime),
+        endTime: toUtcIsoString(datePart, form.endTime),
         capacityKw: Number(form.capacityKw),
       });
       setSlot(updated);
       setForm({
-        startTime: toTimeInputValue(updated.startTime),
-        endTime: toTimeInputValue(updated.endTime),
+        startTime: toLocalTimeInput(updated.startTime),
+        endTime: toLocalTimeInput(updated.endTime),
         capacityKw: updated.capacityKw,
       });
       setIsEditing(false);
@@ -174,7 +171,7 @@ export default function SlotDetail({ id, expectedStationId, onBack, onNotify, on
           <div>
             <label className="mb-1 block text-sm font-medium text-brand-black">Date</label>
             <p className="rounded-md border border-brand-border bg-brand-white-soft px-3 py-2 text-brand-black">
-              {new Date(slot.slotDate).toLocaleDateString()}
+              {formatLocalDate(slot.startTime)}
             </p>
           </div>
 
