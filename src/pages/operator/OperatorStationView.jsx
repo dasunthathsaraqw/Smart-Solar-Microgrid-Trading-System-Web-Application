@@ -12,7 +12,8 @@ export default function OperatorStationView() {
     isLoading: contextLoading,
     error: contextError,
     stationError,
-    refreshOperatorContext
+    refreshOperatorContext,
+    notify
   } = useOperatorContext();
 
   const [slots, setSlots] = useState([]);
@@ -33,7 +34,11 @@ export default function OperatorStationView() {
       const slotsData = await getSlots({ stationId: operator.stationId });
       setSlots(slotsData);
     } catch (err) {
-      setSlotsError(err.message || "Failed to load slots.");
+      if (err.response?.status === 403) {
+        setSlotsError("Access denied. Your station assignment may have changed.");
+      } else {
+        setSlotsError(err.message || "Failed to load slots.");
+      }
       setSlots([]);
     } finally {
       setIsSlotsLoading(false);
@@ -50,6 +55,7 @@ export default function OperatorStationView() {
   const handleRefresh = async () => {
     await refreshOperatorContext();
     await loadSlots();
+    notify("Station view refreshed.");
   };
 
   const isLoading = contextLoading || isSlotsLoading;
@@ -85,8 +91,16 @@ export default function OperatorStationView() {
         <OperatorUnassignedState />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">Error loading station</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {error.includes("Access denied") ? "Access Denied" : "Error loading station"}
+          </h3>
           <p className="mt-2 text-sm text-gray-600">{error}</p>
+          <button
+            onClick={handleRefresh}
+            className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
+          >
+            {error.includes("Access denied") ? "Refresh assignment" : "Retry"}
+          </button>
         </div>
       ) : station ? (
         <>

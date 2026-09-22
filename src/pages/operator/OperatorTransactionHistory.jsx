@@ -17,7 +17,8 @@ export default function OperatorTransactionHistory() {
     isUnassigned,
     isLoading: contextLoading,
     error: contextError,
-    refreshOperatorContext
+    refreshOperatorContext,
+    notify
   } = useOperatorContext();
 
   const [filters, setFilters] = useState(initialFilters);
@@ -51,7 +52,7 @@ export default function OperatorTransactionHistory() {
       setResult(data);
     } catch (err) {
       if (err.response?.status === 403) {
-        setHistoryError(err.response?.data?.message || "You do not have access to this station's history.");
+        setHistoryError("Access denied. Your station assignment may have changed.");
       } else {
         setHistoryError(err.message || "Failed to load transaction history.");
       }
@@ -104,6 +105,7 @@ export default function OperatorTransactionHistory() {
   const handleRefresh = async () => {
     await refreshOperatorContext();
     await loadHistory(filters, page, pageSize);
+    notify("Transaction history refreshed.");
   };
 
   const isLoading = contextLoading || isHistoryLoading;
@@ -124,13 +126,15 @@ export default function OperatorTransactionHistory() {
         <OperatorUnassignedState />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">Error loading history</h3>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {error.includes("Access denied") ? "Access Denied" : "Error loading history"}
+          </h3>
           <p className="mt-2 text-sm text-gray-600">{error}</p>
           <button
             onClick={handleRefresh}
             className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
           >
-            Retry
+            {error.includes("Access denied") ? "Refresh assignment" : "Retry"}
           </button>
         </div>
       ) : (
