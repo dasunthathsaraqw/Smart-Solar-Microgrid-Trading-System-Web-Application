@@ -2,7 +2,7 @@
 
 const STORAGE_KEY = "smartsolar_session";
 
-// Persists the login response (token, name, email, role, expiresAt) after a successful login.
+// Persists the login response, including optional operator station context, after a successful login.
 export function saveSession(loginResponse) {
   localStorage.setItem(
     STORAGE_KEY,
@@ -11,7 +11,25 @@ export function saveSession(loginResponse) {
       name: loginResponse.name,
       email: loginResponse.email,
       role: loginResponse.role,
+      stationId: loginResponse.stationId ?? null,
       expiresAt: loginResponse.expiresAt,
+    })
+  );
+}
+
+// Refreshes persisted profile fields from /auth/me while preserving the existing token and expiry.
+export function updateSessionUser(currentUser) {
+  const session = readSession();
+  if (!session) return;
+
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({
+      ...session,
+      name: currentUser.name ?? session.name,
+      email: currentUser.email ?? session.email,
+      role: currentUser.role ?? session.role,
+      stationId: currentUser.stationId ?? null,
     })
   );
 }
@@ -38,7 +56,12 @@ export function getToken() {
 export function getUser() {
   const session = readSession();
   if (!session) return null;
-  return { name: session.name, email: session.email, role: session.role };
+  return {
+    name: session.name,
+    email: session.email,
+    role: session.role,
+    stationId: session.stationId ?? null,
+  };
 }
 
 export function getRole() {
