@@ -5,6 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 import { deactivateUser, getUsers, reactivateUser } from "../../api/users";
 import { getStations } from "../../api/stations";
 import { useConfirm } from "../../components/confirmContext";
+import PageHeader from "../../components/ui/PageHeader";
+import DataTable from "../../components/ui/DataTable";
 import UserRoleBadge from "./UserRoleBadge";
 import UserStatusBadge from "./UserStatusBadge";
 
@@ -22,6 +24,7 @@ export default function UsersList({ onAdd, onView, onNotify }) {
   const [isLoadingStations, setIsLoadingStations] = useState(true);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     getStations()
@@ -33,10 +36,13 @@ export default function UsersList({ onAdd, onView, onNotify }) {
   const loadUsers = useCallback(
     async (roleFilter, statusFilter) => {
       setIsLoading(true);
+      setLoadError("");
       try {
         const data = await getUsers({ role: roleFilter || undefined, status: statusFilter });
         setUsers(data);
       } catch (err) {
+        setLoadError(err.message);
+        setUsers([]);
         onNotify(err.message, "error");
       } finally {
         setIsLoading(false);
@@ -54,6 +60,21 @@ export default function UsersList({ onAdd, onView, onNotify }) {
   const filtered = term
     ? users.filter((u) => u.name.toLowerCase().includes(term) || u.email.toLowerCase().includes(term))
     : users;
+
+  const columns = [
+    { key: "name", header: "Name" },
+    { key: "email", header: "Email" },
+    { key: "role", header: "Role", render: (user) => <UserRoleBadge role={user.role} /> },
+    { key: "stationId", header: "Assigned Station", render: (user) => user.role !== "GridOperator"
+      ? "—"
+      : !user.stationId
+        ? "Not assigned"
+        : isLoadingStations
+          ? "Loading station..."
+          : stations.find((station) => station.id === user.stationId)?.stationName || `Station ${user.stationId}` },
+    { key: "isActive", header: "Status", render: (user) => <UserStatusBadge isActive={user.isActive} /> },
+    { key: "createdAt", header: "Created At", render: (user) => new Date(user.createdAt).toLocaleDateString() },
+  ];
 
   async function handleDeactivate(id) {
     const confirmed = await confirm({
@@ -86,15 +107,14 @@ export default function UsersList({ onAdd, onView, onNotify }) {
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-brand-black">User Management</h2>
+      <PageHeader title="User Management" actions={
         <button
           onClick={onAdd}
           className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark"
         >
           + Add User
         </button>
-      </div>
+      } />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <select
@@ -134,92 +154,51 @@ export default function UsersList({ onAdd, onView, onNotify }) {
 
       <p className="mb-2 text-sm text-brand-muted">{filtered.length} users</p>
 
-      <div className="overflow-x-auto rounded-lg border border-brand-border bg-brand-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-brand-white-soft text-brand-black">
-            <tr>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Role</th>
-              <th className="px-4 py-3">Assigned Station</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Created At</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
-                  Loading...
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
-                  No users found
-                </td>
-              </tr>
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        getRowKey={(user) => user.id}
+        isLoading={isLoading}
+        error={loadError}
+        onRetry={() => loadUsers(role, status)}
+        emptyMessage="No users found"
+        actions={(user) => (
+          <>
+            <button
+              type="button"
+              onClick={() => onView(user.id)}
+              className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+            >
+              View
+            </button>
+            {user.isActive ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onView(user.id, true)}
+                  className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeactivate(user.id)}
+                  className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
+                >
+                  Deactivate
+                </button>
+              </>
             ) : (
-              filtered.map((u) => (
-                <tr key={u.id} className="border-t border-brand-border">
-                  <td className="px-4 py-3">{u.name}</td>
-                  <td className="px-4 py-3">{u.email}</td>
-                  <td className="px-4 py-3">
-                    <UserRoleBadge role={u.role} />
-                  </td>
-                  <td className="px-4 py-3">
-                    {u.role !== "GridOperator"
-                      ? "—"
-                      : !u.stationId
-                        ? "Not assigned"
-                        : isLoadingStations
-                          ? "Loading station..."
-                          : stations.find((station) => station.id === u.stationId)?.stationName || `Station ${u.stationId}`}
-                  </td>
-                  <td className="px-4 py-3">
-                    <UserStatusBadge isActive={u.isActive} />
-                  </td>
-                  <td className="px-4 py-3">{new Date(u.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => onView(u.id)}
-                        className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
-                      >
-                        View
-                      </button>
-                      {u.isActive ? (
-                        <>
-                          <button
-                            onClick={() => onView(u.id, true)}
-                            className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeactivate(u.id)}
-                            className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
-                          >
-                            Deactivate
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          onClick={() => handleReactivate(u.id)}
-                          className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
-                        >
-                          Reactivate
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+              <button
+                type="button"
+                onClick={() => handleReactivate(user.id)}
+                className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
+              >
+                Reactivate
+              </button>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </>
+        )}
+      />    </div>
   );
 }

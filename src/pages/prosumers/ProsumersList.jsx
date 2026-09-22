@@ -8,6 +8,8 @@ import {
   reactivateProsumer,
 } from "../../api/prosumers";
 import { useConfirm } from "../../components/confirmContext";
+import PageHeader from "../../components/ui/PageHeader";
+import DataTable from "../../components/ui/DataTable";
 import StatusBadge from "./StatusBadge";
 
 const TABS = [
@@ -19,6 +21,15 @@ const TABS = [
 ];
 
 const emptyGroups = { all: [], pending: [], requests: [], active: [], deactivated: [] };
+
+const PROSUMER_COLUMNS = [
+  { key: "nic", header: "NIC" },
+  { key: "name", header: "Name" },
+  { key: "email", header: "Email" },
+  { key: "contactNumber", header: "Contact" },
+  { key: "panelCapacityKw", header: "Panel kW" },
+  { key: "status", header: "Status", render: (prosumer) => <StatusBadge isActive={prosumer.isActive} deactivationRequested={prosumer.deactivationRequested} /> },
+];
 
 export default function ProsumersList({ initialTab = "pending", onAdd, onView, onNotify }) {
   const confirm = useConfirm();
@@ -124,15 +135,14 @@ export default function ProsumersList({ initialTab = "pending", onAdd, onView, o
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-brand-black">Prosumer Management</h2>
+      <PageHeader title="Prosumer Management" actions={
         <button
           onClick={onAdd}
           className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark"
         >
           + Add Prosumer
         </button>
-      </div>
+      } />
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex overflow-x-auto" role="tablist" aria-label="Prosumer status">
@@ -166,99 +176,62 @@ export default function ProsumersList({ initialTab = "pending", onAdd, onView, o
         />
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-brand-border bg-brand-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-brand-white-soft text-brand-black">
-            <tr>
-              <th className="px-4 py-3">NIC</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Email</th>
-              <th className="px-4 py-3">Contact</th>
-              <th className="px-4 py-3">Panel kW</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
-                  Loading...
-                </td>
-              </tr>
-            ) : loadError ? (
-              <tr>
-                <td colSpan={7} role="alert" className="px-4 py-6 text-center text-red-700">
-                  {loadError}
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
-                  No prosumers found
-                </td>
-              </tr>
-            ) : (
-              filtered.map((p) => (
-                <tr key={p.nic} className="border-t border-brand-border">
-                  <td className="px-4 py-3">{p.nic}</td>
-                  <td className="px-4 py-3">{p.name}</td>
-                  <td className="px-4 py-3">{p.email}</td>
-                  <td className="px-4 py-3">{p.contactNumber}</td>
-                  <td className="px-4 py-3">{p.panelCapacityKw}</td>
-                  <td className="px-4 py-3">
-                    <StatusBadge isActive={p.isActive} deactivationRequested={p.deactivationRequested} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => onView(p.nic)}
-                        className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
-                      >
-                        View
-                      </button>
-                      {p.isActive && !p.deactivationRequested && (
-                        <button
-                          onClick={() => handleDeactivate(p.nic)}
-                          className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
-                        >
-                          Deactivate
-                        </button>
-                      )}
-                      {activeTab === "requests" && p.isActive && p.deactivationRequested && (
-                        <button
-                          type="button"
-                          onClick={() => handleApproveDeactivation(p.nic)}
-                          disabled={approvingNic !== null}
-                          className="rounded-md bg-brand-black px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-black-soft disabled:opacity-60"
-                        >
-                          {approvingNic === p.nic ? "Approving..." : "Approve deactivation"}
-                        </button>
-                      )}
-                      {!p.isActive && !p.deactivationRequested && (
-                        <button
-                          onClick={() => handleReactivate(p.nic, true)}
-                          className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
-                        >
-                          Approve
-                        </button>
-                      )}
-                      {!p.isActive && p.deactivationRequested && (
-                        <button
-                          onClick={() => handleReactivate(p.nic, false)}
-                          className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
-                        >
-                          Reactivate
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
+      <DataTable
+        columns={PROSUMER_COLUMNS}
+        rows={filtered}
+        getRowKey={(prosumer) => prosumer.nic}
+        isLoading={isLoading}
+        error={loadError}
+        onRetry={loadProsumers}
+        emptyMessage="No prosumers found"
+        actions={(prosumer) => (
+          <>
+            <button
+              type="button"
+              onClick={() => onView(prosumer.nic)}
+              className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+            >
+              View
+            </button>
+            {prosumer.isActive && !prosumer.deactivationRequested && (
+              <button
+                type="button"
+                onClick={() => handleDeactivate(prosumer.nic)}
+                className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
+              >
+                Deactivate
+              </button>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            {activeTab === "requests" && prosumer.isActive && prosumer.deactivationRequested && (
+              <button
+                type="button"
+                onClick={() => handleApproveDeactivation(prosumer.nic)}
+                disabled={approvingNic !== null}
+                className="rounded-md bg-brand-black px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-black-soft disabled:opacity-60"
+              >
+                {approvingNic === prosumer.nic ? "Approving..." : "Approve deactivation"}
+              </button>
+            )}
+            {!prosumer.isActive && !prosumer.deactivationRequested && (
+              <button
+                type="button"
+                onClick={() => handleReactivate(prosumer.nic, true)}
+                className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
+              >
+                Approve
+              </button>
+            )}
+            {!prosumer.isActive && prosumer.deactivationRequested && (
+              <button
+                type="button"
+                onClick={() => handleReactivate(prosumer.nic, false)}
+                className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
+              >
+                Reactivate
+              </button>
+            )}
+          </>
+        )}
+      />    </div>
   );
 }
