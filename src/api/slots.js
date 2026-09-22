@@ -9,6 +9,12 @@ export async function getSlots({ stationId, status } = {}) {
   return response.data;
 }
 
+// Returns bookable slots selected by the API's availability and booking rules.
+export async function getAvailableSlotsByStation(stationId) {
+  const response = await apiClient.get(`/slots/station/${stationId}/available`);
+  return response.data;
+}
+
 export async function getSlotById(id) {
   const response = await apiClient.get(`/slots/${id}`);
   return response.data;
