@@ -42,3 +42,9 @@ export async function getPendingApprovals(count = 20) {
   const response = await apiClient.get("/reports/pending-approvals", { params: { count } });
   return response.data;
 }
+
+// Loads live operator metrics using the backend's persisted station assignment.
+export async function getOperatorDashboard() {
+  const response = await apiClient.get("/reports/operator-dashboard");
+  return response.data;
+}

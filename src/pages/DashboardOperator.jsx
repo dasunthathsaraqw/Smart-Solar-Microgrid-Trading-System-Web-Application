@@ -1,15 +1,13 @@
-// DashboardOperator.jsx — Grid Operator dashboard shell with sidebar navigation.
-// "Monitor Bookings" and "Update Slots" render the real reservation/slot features
-// (the backend already authorizes GridOperator on both); "Station View" is still a
-// placeholder pending Stage 6's operator-specific station actions.
+// DashboardOperator.jsx — Grid Operator dashboard shell with overview and existing operations.
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
+import OperatorOverview from "./operator/OperatorOverview";
 import ReservationsPage from "./reservations/ReservationsPage";
 import SlotsPage from "./slots/SlotsPage";
 
-const NAV_ITEMS = ["Monitor Bookings", "Update Slots", "Station View"];
+const NAV_ITEMS = ["Overview", "Monitor Bookings", "Update Slots", "Station View"];
 
 export default function DashboardOperator() {
   const user = getUser();
@@ -23,7 +21,9 @@ export default function DashboardOperator() {
         <Sidebar items={NAV_ITEMS} activeItem={activeItem} onSelect={setActiveItem} />
 
         <main className="flex-1 px-6 py-10 md:px-10">
-          {activeItem === "Monitor Bookings" ? (
+          {activeItem === "Overview" ? (
+            <OperatorOverview />
+          ) : activeItem === "Monitor Bookings" ? (
             <ReservationsPage />
           ) : activeItem === "Update Slots" ? (
             <SlotsPage />
