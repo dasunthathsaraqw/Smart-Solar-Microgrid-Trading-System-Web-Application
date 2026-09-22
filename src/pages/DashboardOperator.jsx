@@ -2,7 +2,6 @@
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
-import { getUser } from "../utils/auth";
 import { OperatorProvider, useOperatorContext } from "./operator/OperatorContext";
 import OperatorUnassignedState from "./operator/OperatorUnassignedState";
 import OperatorOverview from "./operator/OperatorOverview";
@@ -14,7 +13,6 @@ import OperatorTransferMonitor from "./operator/OperatorTransferMonitor";
 const NAV_ITEMS = ["Overview", "Transfer Monitor", "Update Slots", "Transaction History", "Station View"];
 
 export default function DashboardOperator() {
-  const user = getUser();
   const [activeItem, setActiveItem] = useState(NAV_ITEMS[0]);
 
   return (
@@ -25,7 +23,7 @@ export default function DashboardOperator() {
         <div className="flex w-full flex-1 flex-col md:flex-row">
           <Sidebar items={NAV_ITEMS} activeItem={activeItem} onSelect={setActiveItem} />
 
-          <main className="flex-1 px-6 py-10 md:px-10">
+          <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-10">
             <OperatorPageGate>
               {activeItem === "Overview" ? (
                 <OperatorOverview />
@@ -37,12 +35,7 @@ export default function DashboardOperator() {
                 <OperatorTransactionHistory />
               ) : activeItem === "Station View" ? (
                 <OperatorStationView />
-              ) : (
-                <>
-                  <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
-                  <h2 className="text-2xl font-semibold text-brand-black">this is the {activeItem}</h2>
-                </>
-              )}
+              ) : <OperatorOverview />}
             </OperatorPageGate>
           </main>
         </div>

@@ -37,11 +37,11 @@ export default function Navbar({ title }) {
 
   return (
     <header className="bg-brand-black border-b-4 border-brand-green">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
-        <h1 className="text-lg font-semibold text-brand-white">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
+        <h1 className="min-w-0 text-sm font-semibold leading-tight text-brand-white sm:text-lg">
           Smart Solar Microgrid — {title}
         </h1>
-        <div className="flex items-center gap-4">
+        <div className="flex shrink-0 items-center gap-2 sm:gap-4">
           <span
             role="status"
             aria-label={`API ${apiStatus}`}
@@ -62,7 +62,7 @@ export default function Navbar({ title }) {
           </span>
           <button
             onClick={handleLogout}
-            className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark"
+            className="rounded-md bg-brand-green px-3 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark sm:px-4"
           >
             Logout
           </button>

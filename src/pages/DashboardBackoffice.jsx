@@ -1,5 +1,4 @@
 // DashboardBackoffice.jsx — Backoffice dashboard shell with sidebar navigation.
-// Each sidebar item just prints a placeholder message for now.
 import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
@@ -49,7 +48,7 @@ export default function DashboardBackoffice() {
       <div className="flex w-full flex-1 flex-col md:flex-row">
         <Sidebar items={NAV_ITEMS} activeItem={activeItem} onSelect={setActiveItem} />
 
-        <main className="flex-1 px-6 py-10 md:px-10">
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 md:px-10 md:py-10">
           {activeItem === "Dashboard" ? (
             <DashboardOverview userName={user?.name} onNavigate={handleNavigate} />
           ) : activeItem === "Prosumer Management" ? (
@@ -66,12 +65,7 @@ export default function DashboardBackoffice() {
             <ReportsPage />
           ) : activeItem === "Booking History" ? (
             <BookingHistoryContainer />
-          ) : (
-            <>
-              <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
-              <h2 className="text-2xl font-semibold text-brand-black">this is the {activeItem}</h2>
-            </>
-          )}
+          ) : <DashboardOverview userName={user?.name} onNavigate={handleNavigate} />}
         </main>
       </div>
 
