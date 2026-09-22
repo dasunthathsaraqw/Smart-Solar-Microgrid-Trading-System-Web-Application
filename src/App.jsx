@@ -6,6 +6,7 @@ import CreateAccount from "./pages/CreateAccount";
 import DashboardBackoffice from "./pages/DashboardBackoffice";
 import DashboardOperator from "./pages/DashboardOperator";
 import DashboardProsumer from "./pages/DashboardProsumer";
+import NotFound from "./pages/NotFound";
 import RequireAuth from "./components/RequireAuth";
 import { ConfirmProvider } from "./components/ConfirmProvider";
 
@@ -48,6 +49,7 @@ function App() {
               </RequireAuth>
             }
           />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </ConfirmProvider>
