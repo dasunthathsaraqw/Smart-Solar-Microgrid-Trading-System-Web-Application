@@ -20,9 +20,9 @@ const TABS = [
 
 const emptyGroups = { all: [], pending: [], requests: [], active: [], deactivated: [] };
 
-export default function ProsumersList({ onAdd, onView, onNotify }) {
+export default function ProsumersList({ initialTab = "pending", onAdd, onView, onNotify }) {
   const confirm = useConfirm();
-  const [activeTab, setActiveTab] = useState("pending");
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [groups, setGroups] = useState(emptyGroups);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
