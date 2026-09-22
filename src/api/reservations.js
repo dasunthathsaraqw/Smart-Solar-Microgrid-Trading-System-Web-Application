@@ -49,3 +49,13 @@ export async function searchReservations(searchRequest) {
   const response = await apiClient.post("/reservations/search", searchRequest);
   return response.data;
 }
+
+export async function getOperatorTransactionHistory({ dateFrom, dateTo, page, pageSize } = {}) {
+  const params = {};
+  if (dateFrom) params.dateFrom = dateFrom;
+  if (dateTo) params.dateTo = dateTo;
+  if (page) params.page = page;
+  if (pageSize) params.pageSize = pageSize;
+  const response = await apiClient.get("/reservations/operator/history", { params });
+  return response.data;
+}
