@@ -6,7 +6,7 @@ import ProsumerCreateForm from "./ProsumerCreateForm";
 import ProsumerDetail from "./ProsumerDetail";
 import ProsumersList from "./ProsumersList";
 
-export default function ProsumersPage() {
+export default function ProsumersPage({ initialTab = "pending" }) {
   const [view, setView] = useState("list");
   const [selectedNic, setSelectedNic] = useState(null);
   const [toast, setToast] = useState(null);
@@ -23,6 +23,7 @@ export default function ProsumersPage() {
 
       {view === "list" && (
         <ProsumersList
+          initialTab={initialTab}
           onAdd={() => setView("create")}
           onView={(nic) => {
             setSelectedNic(nic);

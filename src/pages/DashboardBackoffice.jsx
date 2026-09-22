@@ -29,6 +29,7 @@ export default function DashboardBackoffice() {
   const [activeItem, setActiveItem] = useState(NAV_ITEMS[0]);
   const [slotsStationId, setSlotsStationId] = useState(null);
   const [reservationStatus, setReservationStatus] = useState(null);
+  const [prosumerTab, setProsumerTab] = useState("pending");
 
   function handleManageSlots(stationId) {
     setSlotsStationId(stationId);
@@ -37,6 +38,7 @@ export default function DashboardBackoffice() {
 
   function handleNavigate(navItem, options = {}) {
     setReservationStatus(options.status || null);
+    if (navItem === "Prosumer Management") setProsumerTab(options.prosumerTab || "pending");
     setActiveItem(navItem);
   }
 
@@ -51,7 +53,7 @@ export default function DashboardBackoffice() {
           {activeItem === "Dashboard" ? (
             <DashboardOverview userName={user?.name} onNavigate={handleNavigate} />
           ) : activeItem === "Prosumer Management" ? (
-            <ProsumersPage />
+            <ProsumersPage initialTab={prosumerTab} />
           ) : activeItem === "Station Management" ? (
             <StationsPage onManageSlots={handleManageSlots} />
           ) : activeItem === "Slot Management" ? (
