@@ -1,76 +1,60 @@
-// OperatorOverview.jsx — live assigned-station workload for the Grid Operator landing tab.
-// Counts and booking order come directly from /api/reports/operator-dashboard.
 import { useCallback, useEffect, useState } from "react";
-import { getCurrentUser } from "../../api/auth";
 import { getOperatorDashboard } from "../../api/reports";
-import { getStationById } from "../../api/stations";
-import { getUser, updateSessionUser } from "../../utils/auth";
 import KpiCard from "../dashboard/KpiCard";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
-
-const UNASSIGNED_ERROR = "Grid Operator is not assigned to a station.";
+import { useOperatorContext } from "./OperatorContext";
+import OperatorUnassignedState from "./OperatorUnassignedState";
 
 export default function OperatorOverview() {
-  const [operator, setOperator] = useState(() => getUser());
-  const [dashboard, setDashboard] = useState(null);
-  const [station, setStation] = useState(null);
-  const [stationError, setStationError] = useState("");
-  const [error, setError] = useState("");
-  const [isUnassigned, setIsUnassigned] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    currentUser: operator,
+    assignedStation: station,
+    isUnassigned,
+    isLoading: contextLoading,
+    error: contextError,
+    stationError,
+    refreshOperatorContext
+  } = useOperatorContext();
 
-  const loadOverview = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
-    setStationError("");
-    setIsUnassigned(false);
+  const [dashboard, setDashboard] = useState(null);
+  const [dashboardError, setDashboardError] = useState("");
+  const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+
+  const loadDashboard = useCallback(async () => {
+    if (isUnassigned || !operator?.stationId) {
+      setDashboard(null);
+      setIsDashboardLoading(false);
+      return;
+    }
+    
+    setIsDashboardLoading(true);
+    setDashboardError("");
 
     try {
-      const currentUser = await getCurrentUser();
-      updateSessionUser(currentUser);
-      setOperator(currentUser);
-
-      if (!currentUser.stationId) {
-        setIsUnassigned(true);
-        setDashboard(null);
-        setStation(null);
-        return;
-      }
-
-      setIsUnassigned(false);
-      const [dashboardResult, stationResult] = await Promise.allSettled([
-        getOperatorDashboard(),
-        getStationById(currentUser.stationId),
-      ]);
-
-      if (dashboardResult.status === "rejected") {
-        throw dashboardResult.reason;
-      }
-
-      setDashboard(dashboardResult.value);
-      if (stationResult.status === "fulfilled") {
-        setStation(stationResult.value);
-      } else {
-        setStation(null);
-        setStationError(stationResult.reason?.message || "Station details are temporarily unavailable.");
-      }
+      const data = await getOperatorDashboard();
+      setDashboard(data);
     } catch (err) {
       setDashboard(null);
-      setStation(null);
-      if (err.message === UNASSIGNED_ERROR) {
-        setIsUnassigned(true);
-      } else {
-        setError(err.message || "Unable to load the operator overview. Please try again.");
-      }
+      setDashboardError(err.message || "Unable to load dashboard data.");
     } finally {
-      setIsLoading(false);
+      setIsDashboardLoading(false);
     }
-  }, []);
+  }, [operator?.stationId, isUnassigned]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refreshes persisted identity and live dashboard data on entry
-    loadOverview();
-  }, [loadOverview]);
+    if (!contextLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadDashboard();
+    }
+  }, [contextLoading, loadDashboard]);
+
+  const handleRefresh = async () => {
+    await refreshOperatorContext();
+    await loadDashboard();
+  };
+
+  const isLoading = contextLoading || isDashboardLoading;
+  const error = contextError || dashboardError;
 
   const upcoming = dashboard?.upcomingApproved ?? [];
 
@@ -86,7 +70,7 @@ export default function OperatorOverview() {
         </div>
         <button
           type="button"
-          onClick={loadOverview}
+          onClick={handleRefresh}
           disabled={isLoading}
           className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -97,22 +81,14 @@ export default function OperatorOverview() {
       {isLoading ? (
         <LoadingOverview />
       ) : isUnassigned ? (
-        <div
-          role="status"
-          className="rounded-lg border-l-4 border-brand-green bg-brand-white p-6 shadow-sm"
-        >
-          <h3 className="text-lg font-semibold text-brand-black">No station assigned</h3>
-          <p className="mt-2 text-sm text-brand-muted">
-            Contact Backoffice to receive a station assignment before starting operational work.
-          </p>
-        </div>
+        <OperatorUnassignedState />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-brand-green bg-brand-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-brand-black">Overview unavailable</h3>
           <p className="mt-2 text-sm text-brand-muted">{error}</p>
           <button
             type="button"
-            onClick={loadOverview}
+            onClick={handleRefresh}
             className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
           >
             Try again

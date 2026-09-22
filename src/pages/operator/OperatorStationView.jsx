@@ -1,66 +1,59 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCurrentUser } from "../../api/auth";
-import { getStationById } from "../../api/stations";
 import { getSlots } from "../../api/slots";
-import { updateSessionUser } from "../../utils/auth";
 import SlotStatusBadge from "../slots/SlotStatusBadge";
+import { useOperatorContext } from "./OperatorContext";
+import OperatorUnassignedState from "./OperatorUnassignedState";
 
 export default function OperatorStationView() {
-  const [station, setStation] = useState(null);
-  const [slots, setSlots] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUnassigned, setIsUnassigned] = useState(false);
-  const [error, setError] = useState("");
-  const [slotsError, setSlotsError] = useState("");
+  const {
+    currentUser: operator,
+    assignedStation: station,
+    isUnassigned,
+    isLoading: contextLoading,
+    error: contextError,
+    stationError,
+    refreshOperatorContext
+  } = useOperatorContext();
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    setError("");
+  const [slots, setSlots] = useState([]);
+  const [slotsError, setSlotsError] = useState("");
+  const [isSlotsLoading, setIsSlotsLoading] = useState(true);
+
+  const loadSlots = useCallback(async () => {
+    if (isUnassigned || !operator?.stationId) {
+      setSlots([]);
+      setIsSlotsLoading(false);
+      return;
+    }
+
+    setIsSlotsLoading(true);
     setSlotsError("");
-    setIsUnassigned(false);
 
     try {
-      const currentUser = await getCurrentUser();
-      updateSessionUser(currentUser);
-
-      if (!currentUser.stationId) {
-        setIsUnassigned(true);
-        setStation(null);
-        setSlots([]);
-        return;
-      }
-
-      setIsUnassigned(false);
-      
-      try {
-        const stationData = await getStationById(currentUser.stationId);
-        setStation(stationData);
-      } catch (err) {
-        setError(err.message || "Failed to load station details.");
-        setStation(null);
-      }
-
-      try {
-        const slotsData = await getSlots({ stationId: currentUser.stationId });
-        setSlots(slotsData);
-      } catch (err) {
-        setSlotsError(err.message || "Failed to load slots.");
-        setSlots([]);
-      }
-      
+      const slotsData = await getSlots({ stationId: operator.stationId });
+      setSlots(slotsData);
     } catch (err) {
-      setStation(null);
+      setSlotsError(err.message || "Failed to load slots.");
       setSlots([]);
-      setError(err.message || "Failed to authenticate or load station details.");
     } finally {
-      setIsLoading(false);
+      setIsSlotsLoading(false);
     }
-  }, []);
+  }, [operator, isUnassigned]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- refreshes persisted identity and live data on entry
-    loadData();
-  }, [loadData]);
+    if (!contextLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadSlots();
+    }
+  }, [contextLoading, loadSlots]);
+
+  const handleRefresh = async () => {
+    await refreshOperatorContext();
+    await loadSlots();
+  };
+
+  const isLoading = contextLoading || isSlotsLoading;
+  const error = contextError || stationError;
 
   // Derived slot counts
   const [now] = useState(() => Date.now());
@@ -78,7 +71,7 @@ export default function OperatorStationView() {
         </div>
         <button
           type="button"
-          onClick={loadData}
+          onClick={handleRefresh}
           disabled={isLoading}
           className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -89,12 +82,7 @@ export default function OperatorStationView() {
       {isLoading ? (
         <LoadingStationView />
       ) : isUnassigned ? (
-        <div role="status" className="rounded-lg border-l-4 border-brand-green bg-brand-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-brand-black">No station assigned</h3>
-          <p className="mt-2 text-sm text-brand-muted">
-            Contact Backoffice to receive a station assignment.
-          </p>
-        </div>
+        <OperatorUnassignedState />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900">Error loading station</h3>
