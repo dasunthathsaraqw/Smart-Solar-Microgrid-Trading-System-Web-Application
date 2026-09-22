@@ -112,7 +112,7 @@ export default function ProsumerDetail({ nic, onBack, onNotify }) {
       <div className="rounded-lg border border-brand-border bg-brand-white p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-brand-black">{prosumer.name}</h2>
-          <StatusBadge status={prosumer.status} />
+          <StatusBadge isActive={prosumer.isActive} deactivationRequested={prosumer.deactivationRequested} />
         </div>
 
         <div className="space-y-4">
