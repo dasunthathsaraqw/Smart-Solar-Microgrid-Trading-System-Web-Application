@@ -5,10 +5,10 @@ import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
 import { OperatorProvider } from "./operator/OperatorContext";
 import OperatorOverview from "./operator/OperatorOverview";
+import OperatorSlotManagement from "./operator/OperatorSlotManagement";
 import OperatorStationView from "./operator/OperatorStationView";
 import OperatorTransactionHistory from "./operator/OperatorTransactionHistory";
 import OperatorTransferMonitor from "./operator/OperatorTransferMonitor";
-import SlotsPage from "./slots/SlotsPage";
 
 const NAV_ITEMS = ["Overview", "Transfer Monitor", "Update Slots", "Transaction History", "Station View"];
 
@@ -30,7 +30,7 @@ export default function DashboardOperator() {
           ) : activeItem === "Transfer Monitor" ? (
             <OperatorTransferMonitor />
           ) : activeItem === "Update Slots" ? (
-            <SlotsPage />
+            <OperatorSlotManagement />
           ) : activeItem === "Transaction History" ? (
             <OperatorTransactionHistory />
           ) : activeItem === "Station View" ? (
