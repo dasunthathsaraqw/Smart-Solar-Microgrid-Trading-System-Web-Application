@@ -3,6 +3,7 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
+import { OperatorProvider } from "./operator/OperatorContext";
 import OperatorOverview from "./operator/OperatorOverview";
 import OperatorStationView from "./operator/OperatorStationView";
 import OperatorTransactionHistory from "./operator/OperatorTransactionHistory";
@@ -16,8 +17,9 @@ export default function DashboardOperator() {
   const [activeItem, setActiveItem] = useState(NAV_ITEMS[0]);
 
   return (
-    <div className="flex min-h-screen flex-col bg-brand-white-soft">
-      <Navbar title="Grid Operator" />
+    <OperatorProvider>
+      <div className="flex min-h-screen flex-col bg-brand-white-soft">
+        <Navbar title="Grid Operator" />
 
       <div className="flex w-full flex-1 flex-col md:flex-row">
         <Sidebar items={NAV_ITEMS} activeItem={activeItem} onSelect={setActiveItem} />
@@ -46,5 +48,6 @@ export default function DashboardOperator() {
         Smart Solar Microgrid Trading System
       </footer>
     </div>
+    </OperatorProvider>
   );
 }
