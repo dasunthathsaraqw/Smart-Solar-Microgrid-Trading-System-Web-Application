@@ -20,11 +20,13 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
   const [isLoading, setIsLoading] = useState(true);
   const [stations, setStations] = useState([]);
   const [stationsError, setStationsError] = useState("");
+  const [isLoadingStations, setIsLoadingStations] = useState(true);
 
   useEffect(() => {
-    getStations("Active")
+    getStations("active")
       .then((data) => setStations(Array.isArray(data) ? data : []))
-      .catch((err) => setStationsError(err.message || "Unable to load active stations."));
+      .catch((err) => setStationsError(err.message || "Unable to load active stations."))
+      .finally(() => setIsLoadingStations(false));
   }, []);
 
   const load = useCallback(async () => {
@@ -45,8 +47,16 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
     load();
   }, [load]);
 
+  // Clears the selected station when an edited user changes to Backoffice.
   function updateField(field) {
-    return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
+    return (event) => {
+      const value = event.target.value;
+      setForm((prev) => ({
+        ...prev,
+        [field]: value,
+        ...(field === "role" && value !== "GridOperator" ? { stationId: "" } : {}),
+      }));
+    };
   }
 
   async function handleSave() {
@@ -153,7 +163,9 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
             <div>
               <label className="mb-1 block text-sm font-medium text-brand-black">Assigned Station</label>
               {isEditing ? (
-                stationsError ? (
+                isLoadingStations ? (
+                  <p className="text-sm text-brand-muted">Loading active stations...</p>
+                ) : stationsError ? (
                   <p className="text-sm text-red-600">{stationsError}</p>
                 ) : stations.length === 0 ? (
                   <p className="text-sm text-brand-muted">No active stations available.</p>
