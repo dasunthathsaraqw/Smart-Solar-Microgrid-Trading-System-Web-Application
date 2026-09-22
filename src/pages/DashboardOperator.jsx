@@ -3,7 +3,8 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
-import { OperatorProvider } from "./operator/OperatorContext";
+import { OperatorProvider, useOperatorContext } from "./operator/OperatorContext";
+import OperatorUnassignedState from "./operator/OperatorUnassignedState";
 import OperatorOverview from "./operator/OperatorOverview";
 import OperatorSlotManagement from "./operator/OperatorSlotManagement";
 import OperatorStationView from "./operator/OperatorStationView";
@@ -21,33 +22,58 @@ export default function DashboardOperator() {
       <div className="flex min-h-screen flex-col bg-brand-white-soft">
         <Navbar title="Grid Operator" />
 
-      <div className="flex w-full flex-1 flex-col md:flex-row">
-        <Sidebar items={NAV_ITEMS} activeItem={activeItem} onSelect={setActiveItem} />
+        <div className="flex w-full flex-1 flex-col md:flex-row">
+          <Sidebar items={NAV_ITEMS} activeItem={activeItem} onSelect={setActiveItem} />
 
-        <main className="flex-1 px-6 py-10 md:px-10">
-          {activeItem === "Overview" ? (
-            <OperatorOverview />
-          ) : activeItem === "Transfer Monitor" ? (
-            <OperatorTransferMonitor />
-          ) : activeItem === "Update Slots" ? (
-            <OperatorSlotManagement />
-          ) : activeItem === "Transaction History" ? (
-            <OperatorTransactionHistory />
-          ) : activeItem === "Station View" ? (
-            <OperatorStationView />
-          ) : (
-            <>
-              <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
-              <h2 className="text-2xl font-semibold text-brand-black">this is the {activeItem}</h2>
-            </>
-          )}
-        </main>
+          <main className="flex-1 px-6 py-10 md:px-10">
+            <OperatorPageGate>
+              {activeItem === "Overview" ? (
+                <OperatorOverview />
+              ) : activeItem === "Transfer Monitor" ? (
+                <OperatorTransferMonitor />
+              ) : activeItem === "Update Slots" ? (
+                <OperatorSlotManagement />
+              ) : activeItem === "Transaction History" ? (
+                <OperatorTransactionHistory />
+              ) : activeItem === "Station View" ? (
+                <OperatorStationView />
+              ) : (
+                <>
+                  <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
+                  <h2 className="text-2xl font-semibold text-brand-black">this is the {activeItem}</h2>
+                </>
+              )}
+            </OperatorPageGate>
+          </main>
+        </div>
+
+        <footer className="bg-brand-black py-4 text-center text-xs text-brand-white">
+          Smart Solar Microgrid Trading System
+        </footer>
       </div>
-
-      <footer className="bg-brand-black py-4 text-center text-xs text-brand-white">
-        Smart Solar Microgrid Trading System
-      </footer>
-    </div>
     </OperatorProvider>
   );
+}
+
+// Uses the latest /auth/me station context to guard every operator section consistently.
+function OperatorPageGate({ children }) {
+  const { isLoading, isUnassigned, error, refreshOperatorContext } = useOperatorContext();
+
+  if (isLoading) return <p role="status" className="text-brand-muted">Loading operator context...</p>;
+  if (error) {
+    return (
+      <div role="alert" className="rounded-lg border border-brand-border bg-brand-white p-6">
+        <p className="text-sm text-brand-black">{error}</p>
+        <button
+          type="button"
+          onClick={refreshOperatorContext}
+          className="mt-4 text-sm font-medium text-brand-green hover:underline"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+  if (isUnassigned) return <OperatorUnassignedState onRefresh={refreshOperatorContext} />;
+  return children;
 }

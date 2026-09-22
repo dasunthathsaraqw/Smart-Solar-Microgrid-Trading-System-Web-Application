@@ -19,15 +19,25 @@ export default function UserCreateForm({ onCancel, onCreated, onNotify }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [stations, setStations] = useState([]);
   const [stationsError, setStationsError] = useState("");
+  const [isLoadingStations, setIsLoadingStations] = useState(true);
 
   useEffect(() => {
-    getStations("Active")
+    getStations("active")
       .then((data) => setStations(Array.isArray(data) ? data : []))
-      .catch((err) => setStationsError(err.message || "Unable to load active stations."));
+      .catch((err) => setStationsError(err.message || "Unable to load active stations."))
+      .finally(() => setIsLoadingStations(false));
   }, []);
 
+  // Clears an operator assignment when the role changes to Backoffice.
   function updateField(field) {
-    return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
+    return (event) => {
+      const value = event.target.value;
+      setForm((prev) => ({
+        ...prev,
+        [field]: value,
+        ...(field === "role" && value !== "GridOperator" ? { stationId: "" } : {}),
+      }));
+    };
   }
 
   async function handleSubmit(event) {
@@ -50,9 +60,7 @@ export default function UserCreateForm({ onCancel, onCreated, onNotify }) {
         role: form.role,
       };
 
-      if (form.role === "GridOperator" && form.stationId) {
-        payload.stationId = form.stationId;
-      }
+      payload.stationId = form.role === "GridOperator" ? form.stationId || null : null;
 
       await createUser(payload);
       setSuccess("User created successfully");
@@ -96,7 +104,9 @@ export default function UserCreateForm({ onCancel, onCreated, onNotify }) {
         {form.role === "GridOperator" && (
           <div>
             <label className="mb-1 block text-sm font-medium text-brand-black">Assigned Station</label>
-            {stationsError ? (
+            {isLoadingStations ? (
+              <p className="text-sm text-brand-muted">Loading active stations...</p>
+            ) : stationsError ? (
               <p className="text-sm text-red-600">{stationsError}</p>
             ) : stations.length === 0 ? (
               <p className="text-sm text-brand-muted">No active stations available.</p>
