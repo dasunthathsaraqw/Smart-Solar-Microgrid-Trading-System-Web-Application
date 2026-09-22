@@ -27,6 +27,7 @@ export default function ProsumersList({ onAdd, onView, onNotify }) {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
+  const [approvingNic, setApprovingNic] = useState(null);
 
   // Refreshes each tab from API data; the two request queues use their dedicated endpoints.
   const loadProsumers = useCallback(async () => {
@@ -80,6 +81,28 @@ export default function ProsumersList({ onAdd, onView, onNotify }) {
       loadProsumers();
     } catch (err) {
       onNotify(err.message, "error");
+    }
+  }
+
+  // Confirms an owner's deactivation request, then lets the API perform the transition.
+  async function handleApproveDeactivation(nic) {
+    const confirmed = await confirm({
+      title: "Approve deactivation request",
+      message: `Approve the deactivation request for ${nic}? They will no longer be able to log in.`,
+      confirmLabel: "Approve deactivation",
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    setApprovingNic(nic);
+    try {
+      await deactivateProsumer(nic);
+      onNotify("Deactivation request approved", "success");
+      await loadProsumers();
+    } catch (err) {
+      onNotify(err.message, "error");
+    } finally {
+      setApprovingNic(null);
     }
   }
 
@@ -200,6 +223,16 @@ export default function ProsumersList({ onAdd, onView, onNotify }) {
                           className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
                         >
                           Deactivate
+                        </button>
+                      )}
+                      {activeTab === "requests" && p.isActive && p.deactivationRequested && (
+                        <button
+                          type="button"
+                          onClick={() => handleApproveDeactivation(p.nic)}
+                          disabled={approvingNic !== null}
+                          className="rounded-md bg-brand-black px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-black-soft disabled:opacity-60"
+                        >
+                          {approvingNic === p.nic ? "Approving..." : "Approve deactivation"}
                         </button>
                       )}
                       {!p.isActive && !p.deactivationRequested && (
