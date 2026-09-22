@@ -3,6 +3,7 @@ import { getCurrentUser } from "../../api/auth";
 import { getOperatorTransactionHistory } from "../../api/reservations";
 import { updateSessionUser } from "../../utils/auth";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
+import OperatorTransferDetail from "./OperatorTransferDetail";
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -20,6 +21,7 @@ export default function OperatorTransactionHistory() {
   const [isLoading, setIsLoading] = useState(true);
   const [isUnassigned, setIsUnassigned] = useState(false);
   const [error, setError] = useState("");
+  const [selectedReservationId, setSelectedReservationId] = useState(null);
 
   const loadHistory = useCallback(async (currentFilters, currentPage, currentPageSize) => {
     setIsLoading(true);
@@ -183,18 +185,19 @@ export default function OperatorTransactionHistory() {
                   <th scope="col" className="px-4 py-3">Capacity</th>
                   <th scope="col" className="px-4 py-3">Status</th>
                   <th scope="col" className="px-4 py-3">Completed By</th>
+                  <th scope="col" className="px-4 py-3">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
+                    <td colSpan={8} className="px-4 py-6 text-center text-brand-muted">
                       Loading history...
                     </td>
                   </tr>
                 ) : items.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
+                    <td colSpan={8} className="px-4 py-6 text-center text-brand-muted">
                       {(filters.dateFrom || filters.dateTo) 
                         ? "No completed energy transfers matched the selected period."
                         : "No completed energy transfers found."}
@@ -219,6 +222,14 @@ export default function OperatorTransactionHistory() {
                         <ReservationStatusBadge status={r.status} />
                       </td>
                       <td className="px-4 py-3 text-brand-black text-xs">{r.completedBy || "System"}</td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() => setSelectedReservationId(r.id)}
+                          className="rounded-md border border-brand-green px-3 py-1.5 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+                        >
+                          View Details
+                        </button>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -265,6 +276,13 @@ export default function OperatorTransactionHistory() {
             </div>
           )}
         </>
+      )}
+      
+      {selectedReservationId && (
+        <OperatorTransferDetail
+          reservationId={selectedReservationId}
+          onClose={() => setSelectedReservationId(null)}
+        />
       )}
     </section>
   );
