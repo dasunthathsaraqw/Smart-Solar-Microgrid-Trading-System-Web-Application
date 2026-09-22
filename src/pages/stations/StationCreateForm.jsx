@@ -1,6 +1,8 @@
 // StationCreateForm.jsx — Add Station form with client-side validation mirroring the backend rules.
 import { useState } from "react";
 import { createStation } from "../../api/stations";
+import LocationPicker from "../../components/LocationPicker";
+import ScheduleEditor from "../../components/ScheduleEditor";
 
 const initialForm = {
   stationName: "",
@@ -11,42 +13,23 @@ const initialForm = {
   schedule: "",
 };
 
-function validate(form) {
-  if (form.stationName.trim().length < 3 || form.stationName.trim().length > 100) {
-    return "Station name must be 3-100 characters";
-  }
-  const lat = Number(form.latitude);
-  if (Number.isNaN(lat) || lat < -90 || lat > 90) return "Latitude must be between -90 and 90";
-  const lng = Number(form.longitude);
-  if (Number.isNaN(lng) || lng < -180 || lng > 180) return "Longitude must be between -180 and 180";
-  if (!(Number(form.capacityKw) > 0)) return "Capacity must be greater than 0";
-  if (!Number.isInteger(Number(form.availableSlots)) || Number(form.availableSlots) < 0) {
-    return "Available slots must be a whole number of 0 or more";
-  }
-  if (!form.schedule.trim()) return "Schedule is required";
-  return "";
-}
-
+// Creates a station with map-selected coordinates and a schedule string accepted by the API.
 export default function StationCreateForm({ onCancel, onCreated, onNotify }) {
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Updates a typed station property before submission.
   function updateField(field) {
     return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
   }
 
+  // Sends the station fields to the service and displays its validation response.
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setSuccess("");
-
-    const validationError = validate(form);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
 
     setIsSubmitting(true);
     try {
@@ -76,27 +59,7 @@ export default function StationCreateForm({ onCancel, onCreated, onNotify }) {
       <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-brand-border bg-brand-white p-6">
         <Field label="Station Name" value={form.stationName} onChange={updateField("stationName")} />
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field
-            label="Latitude"
-            type="number"
-            step="0.000001"
-            min="-90"
-            max="90"
-            value={form.latitude}
-            onChange={updateField("latitude")}
-          />
-          <Field
-            label="Longitude"
-            type="number"
-            step="0.000001"
-            min="-180"
-            max="180"
-            value={form.longitude}
-            onChange={updateField("longitude")}
-          />
-        </div>
-        <p className="-mt-2 text-xs text-brand-muted">e.g. Kandy: 7.2906, 80.6337</p>
+        <LocationPicker latitude={form.latitude} longitude={form.longitude} onChange={(latitude, longitude) => setForm((prev) => ({ ...prev, latitude, longitude }))} />
 
         <Field
           label="Capacity (kW/h)"
@@ -114,12 +77,7 @@ export default function StationCreateForm({ onCancel, onCreated, onNotify }) {
           value={form.availableSlots}
           onChange={updateField("availableSlots")}
         />
-        <Field
-          label="Schedule"
-          value={form.schedule}
-          onChange={updateField("schedule")}
-          placeholder="06:00-20:00 Mon-Sun"
-        />
+        <ScheduleEditor value={form.schedule} onChange={(schedule) => setForm((prev) => ({ ...prev, schedule }))} />
 
         {error && (
           <p className="border-l-4 border-brand-green bg-brand-white-soft px-3 py-2 text-sm text-brand-black">
@@ -153,6 +111,7 @@ export default function StationCreateForm({ onCancel, onCreated, onNotify }) {
   );
 }
 
+// Renders a labelled station property input.
 function Field({ label, ...inputProps }) {
   return (
     <div>

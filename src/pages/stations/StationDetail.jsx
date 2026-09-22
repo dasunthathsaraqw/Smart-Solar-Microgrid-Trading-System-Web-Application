@@ -9,59 +9,54 @@ import {
   updateStation,
 } from "../../api/stations";
 import { useConfirm } from "../../components/confirmContext";
+import LocationPicker from "../../components/LocationPicker";
+import ScheduleEditor from "../../components/ScheduleEditor";
 import StationStatusBadge from "./StationStatusBadge";
+import StationSlotSummary from "./StationSlotSummary";
+import DeactivationBlockedDialog from "./DeactivationBlockedDialog";
+import LoadingState from "../../components/ui/LoadingState";
+import EmptyState from "../../components/ui/EmptyState";
+import ErrorState from "../../components/ui/ErrorState";
 
-function validate(form) {
-  const lat = Number(form.latitude);
-  if (Number.isNaN(lat) || lat < -90 || lat > 90) return "Latitude must be between -90 and 90";
-  const lng = Number(form.longitude);
-  if (Number.isNaN(lng) || lng < -180 || lng > 180) return "Longitude must be between -180 and 180";
-  if (!(Number(form.capacityKw) > 0)) return "Capacity must be greater than 0";
-  if (!Number.isInteger(Number(form.availableSlots)) || Number(form.availableSlots) < 0) {
-    return "Available slots must be a whole number of 0 or more";
-  }
-  if (!form.schedule.trim()) return "Schedule is required";
-  return "";
-}
-
-export default function StationDetail({ id, onBack, onNotify }) {
+// Displays station details while the service remains authoritative for updates and lifecycle rules.
+export default function StationDetail({ id, onBack, onNotify, onManageSlots }) {
   const confirm = useConfirm();
   const [station, setStation] = useState(null);
   const [form, setForm] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [blockedError, setBlockedError] = useState("");
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Reloads the selected station after lifecycle actions.
   async function load() {
     setIsLoading(true);
     try {
       const data = await getStationById(id);
       setStation(data);
       setForm(data);
+      setError("");
     } catch (err) {
+      setError(err.message);
       onNotify(err.message, "error");
     } finally {
       setIsLoading(false);
     }
   }
 
+  // Updates one editable station field.
   function updateField(field) {
     return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
   }
 
+  // Saves editable station fields through the service.
   async function handleSave() {
     setError("");
-    const validationError = validate(form);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
-
     try {
       const updated = await updateStation(id, {
         stationName: form.stationName,
@@ -80,6 +75,7 @@ export default function StationDetail({ id, onBack, onNotify }) {
     }
   }
 
+  // Displays the blocking dialog only when the service rejects deactivation for reservations.
   async function handleDeactivate() {
     const confirmed = await confirm({
       title: "Deactivate Station",
@@ -95,20 +91,26 @@ export default function StationDetail({ id, onBack, onNotify }) {
       load();
     } catch (err) {
       // Surfaces the backend's own message, e.g. "Cannot deactivate: active reservations exist".
+      if (err.message === "Cannot deactivate: active reservations exist") setBlockedError(err.message);
+      else setError(err.message);
+    }
+  }
+
+  // Reactivates the station and surfaces any service error.
+  async function handleReactivate() {
+    const confirmed = await confirm({ title: "Reactivate Station", message: "Reactivate this station?", confirmLabel: "Reactivate" });
+    if (!confirmed) return;
+    try {
+      await reactivateStation(id);
+      onNotify("Station reactivated", "success");
+      load();
+    } catch (err) {
       setError(err.message);
     }
   }
 
-  async function handleReactivate() {
-    const confirmed = await confirm({ title: "Reactivate Station", message: "Reactivate this station?", confirmLabel: "Reactivate" });
-    if (!confirmed) return;
-    await reactivateStation(id);
-    onNotify("Station reactivated", "success");
-    load();
-  }
-
-  if (isLoading) return <p className="text-brand-muted">Loading...</p>;
-  if (!station) return <p className="text-brand-muted">Station not found.</p>;
+  if (isLoading) return <LoadingState message="Loading station..." />;
+  if (!station) return error ? <ErrorState message={error} onRetry={load} /> : <EmptyState message="Station not found." />;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -124,22 +126,12 @@ export default function StationDetail({ id, onBack, onNotify }) {
 
         <div className="space-y-4">
           <DetailField label="Station Name" value={form.stationName} editable={isEditing} onChange={updateField("stationName")} />
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DetailField
-              label="Latitude"
-              value={form.latitude}
-              editable={isEditing}
-              onChange={updateField("latitude")}
-              type="number"
-            />
-            <DetailField
-              label="Longitude"
-              value={form.longitude}
-              editable={isEditing}
-              onChange={updateField("longitude")}
-              type="number"
-            />
-          </div>
+          {isEditing ? <LocationPicker latitude={form.latitude} longitude={form.longitude} onChange={(latitude, longitude) => setForm((prev) => ({ ...prev, latitude, longitude }))} /> : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <DetailField label="Latitude" value={form.latitude} />
+              <DetailField label="Longitude" value={form.longitude} />
+            </div>
+          )}
           <DetailField
             label="Capacity (kW/h)"
             value={form.capacityKw}
@@ -154,7 +146,7 @@ export default function StationDetail({ id, onBack, onNotify }) {
             onChange={updateField("availableSlots")}
             type="number"
           />
-          <DetailField label="Schedule" value={form.schedule} editable={isEditing} onChange={updateField("schedule")} />
+          {isEditing ? <ScheduleEditor value={form.schedule} onChange={(schedule) => setForm((prev) => ({ ...prev, schedule }))} /> : <DetailField label="Schedule" value={form.schedule} />}
 
           <div className="border-t border-brand-border pt-3 text-xs text-brand-muted">
             <p>Created by {station.createdBy}</p>
@@ -214,10 +206,13 @@ export default function StationDetail({ id, onBack, onNotify }) {
           </div>
         </div>
       </div>
+      <div className="mt-5"><StationSlotSummary key={`${id}-${station.isActive}`} stationId={id} isActive={station.isActive} onManageSlots={onManageSlots} /></div>
+      {blockedError && <DeactivationBlockedDialog stationId={id} message={blockedError} onClose={() => setBlockedError("")} />}
     </div>
   );
 }
 
+// Shows a station field or its editable input.
 function DetailField({ label, value, editable, onChange, type = "text" }) {
   return (
     <div>

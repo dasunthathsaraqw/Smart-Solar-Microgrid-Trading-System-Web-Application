@@ -37,7 +37,7 @@ export default function StationsPage({ onManageSlots }) {
         <StationCreateForm onCancel={() => setView("list")} onCreated={() => setView("list")} onNotify={notify} />
       )}
 
-      {view === "detail" && <StationDetail id={selectedId} onBack={() => setView("list")} onNotify={notify} />}
+      {view === "detail" && <StationDetail id={selectedId} onBack={() => setView("list")} onNotify={notify} onManageSlots={onManageSlots} />}
     </div>
   );
 }
