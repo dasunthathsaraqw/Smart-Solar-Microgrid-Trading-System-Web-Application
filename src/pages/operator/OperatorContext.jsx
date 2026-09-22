@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from "rea
 import { getCurrentUser } from "../../api/auth";
 import { getStationById } from "../../api/stations";
 import { updateSessionUser } from "../../utils/auth";
+import Toast from "../../components/Toast";
 
 const OperatorContext = createContext(null);
 
@@ -23,6 +24,11 @@ export function OperatorProvider({ children }) {
   const [isUnassigned, setIsUnassigned] = useState(false);
   const [error, setError] = useState("");
   const [stationError, setStationError] = useState("");
+  const [toast, setToast] = useState(null);
+
+  const notify = useCallback((message, type = "success") => {
+    setToast({ message, type });
+  }, []);
 
   const refreshOperatorContext = useCallback(async () => {
     setIsLoading(true);
@@ -82,8 +88,14 @@ export function OperatorProvider({ children }) {
     isLoading,
     error,
     stationError,
-    refreshOperatorContext
+    refreshOperatorContext,
+    notify
   };
 
-  return <OperatorContext.Provider value={value}>{children}</OperatorContext.Provider>;
+  return (
+    <OperatorContext.Provider value={value}>
+      <Toast message={toast?.message} type={toast?.type} onDismiss={() => setToast(null)} />
+      {children}
+    </OperatorContext.Provider>
+  );
 }

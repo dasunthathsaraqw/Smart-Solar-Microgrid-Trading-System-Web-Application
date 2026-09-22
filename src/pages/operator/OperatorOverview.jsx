@@ -13,7 +13,8 @@ export default function OperatorOverview() {
     isLoading: contextLoading,
     error: contextError,
     stationError,
-    refreshOperatorContext
+    refreshOperatorContext,
+    notify
   } = useOperatorContext();
 
   const [dashboard, setDashboard] = useState(null);
@@ -35,7 +36,11 @@ export default function OperatorOverview() {
       setDashboard(data);
     } catch (err) {
       setDashboard(null);
-      setDashboardError(err.message || "Unable to load dashboard data.");
+      if (err.response?.status === 403) {
+        setDashboardError("Access denied. Your station assignment may have changed.");
+      } else {
+        setDashboardError(err.message || "Unable to load dashboard data.");
+      }
     } finally {
       setIsDashboardLoading(false);
     }
@@ -51,6 +56,7 @@ export default function OperatorOverview() {
   const handleRefresh = async () => {
     await refreshOperatorContext();
     await loadDashboard();
+    notify("Overview refreshed.");
   };
 
   const isLoading = contextLoading || isDashboardLoading;
@@ -83,15 +89,17 @@ export default function OperatorOverview() {
       ) : isUnassigned ? (
         <OperatorUnassignedState />
       ) : error ? (
-        <div role="alert" className="rounded-lg border border-brand-green bg-brand-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-brand-black">Overview unavailable</h3>
-          <p className="mt-2 text-sm text-brand-muted">{error}</p>
+        <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {error.includes("Access denied") ? "Access Denied" : "Overview unavailable"}
+          </h3>
+          <p className="mt-2 text-sm text-gray-600">{error}</p>
           <button
             type="button"
             onClick={handleRefresh}
             className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
           >
-            Try again
+            {error.includes("Access denied") ? "Refresh assignment" : "Try again"}
           </button>
         </div>
       ) : dashboard ? (
