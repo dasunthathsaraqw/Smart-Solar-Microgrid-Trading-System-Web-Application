@@ -149,7 +149,7 @@ export default function ProsumersList({ onAdd, onView, onNotify }) {
                   <td className="px-4 py-3">{p.contactNumber}</td>
                   <td className="px-4 py-3">{p.panelCapacityKw}</td>
                   <td className="px-4 py-3">
-                    <StatusBadge status={p.status} />
+                    <StatusBadge isActive={p.isActive} deactivationRequested={p.deactivationRequested} />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-2">
