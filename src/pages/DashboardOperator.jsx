@@ -5,10 +5,11 @@ import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
 import OperatorOverview from "./operator/OperatorOverview";
 import OperatorStationView from "./operator/OperatorStationView";
+import OperatorTransactionHistory from "./operator/OperatorTransactionHistory";
 import ReservationsPage from "./reservations/ReservationsPage";
 import SlotsPage from "./slots/SlotsPage";
 
-const NAV_ITEMS = ["Overview", "Monitor Bookings", "Update Slots", "Station View"];
+const NAV_ITEMS = ["Overview", "Monitor Bookings", "Update Slots", "Transaction History", "Station View"];
 
 export default function DashboardOperator() {
   const user = getUser();
@@ -28,6 +29,8 @@ export default function DashboardOperator() {
             <ReservationsPage />
           ) : activeItem === "Update Slots" ? (
             <SlotsPage />
+          ) : activeItem === "Transaction History" ? (
+            <OperatorTransactionHistory />
           ) : activeItem === "Station View" ? (
             <OperatorStationView />
           ) : (
