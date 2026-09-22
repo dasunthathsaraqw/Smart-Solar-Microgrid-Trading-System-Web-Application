@@ -18,12 +18,14 @@ export default function OperatorStationView() {
   } = useOperatorContext();
 
   const [slots, setSlots] = useState([]);
+  const [availableSlotsCount, setAvailableSlotsCount] = useState(0);
   const [slotsError, setSlotsError] = useState("");
   const [isSlotsLoading, setIsSlotsLoading] = useState(true);
 
   const loadSlots = useCallback(async () => {
     if (isUnassigned || !operator?.stationId) {
       setSlots([]);
+      setAvailableSlotsCount(0);
       setIsSlotsLoading(false);
       return;
     }
@@ -32,8 +34,13 @@ export default function OperatorStationView() {
     setSlotsError("");
 
     try {
-      const slotsData = await getSlots({ stationId: operator.stationId });
+      // The API computes availability using server time and slot state.
+      const [slotsData, availableSlots] = await Promise.all([
+        getSlots({ stationId: operator.stationId }),
+        getSlots({ stationId: operator.stationId, status: "available" }),
+      ]);
       setSlots(slotsData);
+      setAvailableSlotsCount(availableSlots.length);
     } catch (err) {
       if (err.response?.status === 403) {
         setSlotsError("Access denied. Your station assignment may have changed.");
@@ -41,6 +48,7 @@ export default function OperatorStationView() {
         setSlotsError(err.message || "Failed to load slots.");
       }
       setSlots([]);
+      setAvailableSlotsCount(0);
     } finally {
       setIsSlotsLoading(false);
     }
@@ -62,9 +70,7 @@ export default function OperatorStationView() {
   const isLoading = contextLoading || isSlotsLoading;
   const error = contextError || stationError;
 
-  // Derived slot counts
-  const [now] = useState(() => Date.now());
-  const availableSlotsCount = slots.filter(s => !s.isBooked && new Date(s.endTime).getTime() > now).length;
+  // Booked count is a display total of the API's persisted booking flags.
   const bookedSlotsCount = slots.filter(s => s.isBooked).length;
 
   return (
@@ -143,7 +149,7 @@ export default function OperatorStationView() {
                       : "Not available"}
                   </dd>
                 </div>
-                {slots.length > 0 && !slotsError && (
+                {!slotsError && (
                   <div className="flex gap-6">
                     <div>
                       <dt className="text-sm font-medium text-brand-muted">Future Available Slots</dt>
@@ -217,7 +223,7 @@ function SlotsTable({ slots }) {
               <td className="px-4 py-3 text-brand-black">{formatLocalTime(slot.endTime)}</td>
               <td className="px-4 py-3 text-brand-black">{slot.capacityKw} kW</td>
               <td className="px-4 py-3 sm:pr-6">
-                <SlotStatusBadge isBooked={slot.isBooked} endTime={slot.endTime} />
+                      <SlotStatusBadge isBooked={slot.isBooked} />
               </td>
             </tr>
           ))}
