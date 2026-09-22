@@ -6,6 +6,14 @@ export async function getStations(status) {
   return response.data;
 }
 
+// Requests distance-ordered active stations and slot counts from the API.
+export async function getNearbyStations({ latitude, longitude, radiusKm, limit }) {
+  const response = await apiClient.get("/stations/nearby", {
+    params: { latitude, longitude, radiusKm, limit },
+  });
+  return response.data;
+}
+
 export async function getStationById(id) {
   const response = await apiClient.get(`/stations/${id}`);
   return response.data;

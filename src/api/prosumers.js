@@ -6,6 +6,18 @@ export async function getProsumers(status) {
   return response.data;
 }
 
+// Loads accounts awaiting Backoffice approval from the dedicated API endpoint.
+export async function getPendingProsumers() {
+  const response = await apiClient.get("/prosumers/pending");
+  return response.data;
+}
+
+// Loads active accounts whose owners requested deactivation.
+export async function getPendingDeactivations() {
+  const response = await apiClient.get("/prosumers/pending-deactivations");
+  return response.data;
+}
+
 export async function getProsumerByNic(nic) {
   const response = await apiClient.get(`/prosumers/${nic}`);
   return response.data;
