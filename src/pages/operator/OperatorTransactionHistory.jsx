@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { getOperatorTransactionHistory } from "../../api/reservations";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
 import OperatorTransferDetail from "./OperatorTransferDetail";
@@ -12,100 +12,96 @@ const initialFilters = {
   dateTo: "",
 };
 
+// Shows completed reservations for the assigned station using the API's paged history response.
 export default function OperatorTransactionHistory() {
   const {
     isUnassigned,
     isLoading: contextLoading,
     error: contextError,
     refreshOperatorContext,
-    notify
   } = useOperatorContext();
 
   const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
-  const [result, setResult] = useState({ items: [], totalCount: 0, totalPages: 0 });
+  const [result, setResult] = useState({ items: [], totalCount: 0, page: 1, pageSize: 10, totalPages: 0, hasNextPage: false, hasPreviousPage: false });
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState("");
   const [selectedReservationId, setSelectedReservationId] = useState(null);
+  const [retryTrigger, setRetryTrigger] = useState(0);
 
-  const loadHistory = useCallback(async (currentFilters, currentPage, currentPageSize) => {
-    if (isUnassigned) {
-      setResult({ items: [], totalCount: 0, totalPages: 0 });
-      setIsHistoryLoading(false);
-      return;
-    }
-
-    setIsHistoryLoading(true);
-    setHistoryError("");
-
-    try {
-      const params = {
-        dateFrom: currentFilters.dateFrom ? `${currentFilters.dateFrom}T00:00:00Z` : undefined,
-        dateTo: currentFilters.dateTo ? `${currentFilters.dateTo}T23:59:59Z` : undefined,
-        page: currentPage,
-        pageSize: currentPageSize,
-      };
-
-      const data = await getOperatorTransactionHistory(params);
-      setResult(data);
-    } catch (err) {
-      if (err.response?.status === 403) {
-        setHistoryError("Access denied. Your station assignment may have changed.");
-      } else {
-        setHistoryError(err.message || "Failed to load transaction history.");
-      }
-      setResult({ items: [], totalCount: 0, totalPages: 0 });
-    } finally {
-      setIsHistoryLoading(false);
-    }
-  }, [isUnassigned]);
-
+  // Fetches the applied UTC date range and ignores responses from superseded requests.
   useEffect(() => {
-    if (!contextLoading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      loadHistory(initialFilters, 1, 10);
-    }
-  }, [contextLoading, loadHistory]);
+    if (contextLoading || contextError || isUnassigned) return;
 
+    let active = true;
+    const params = {
+      dateFrom: appliedFilters.dateFrom ? `${appliedFilters.dateFrom}T00:00:00.000Z` : undefined,
+      dateTo: appliedFilters.dateTo ? `${appliedFilters.dateTo}T23:59:59.999Z` : undefined,
+      page,
+      pageSize,
+    };
+
+    // Loads one page while preserving the API's error message for failed requests.
+    async function loadHistory() {
+      setIsHistoryLoading(true);
+      setHistoryError("");
+      try {
+        const data = await getOperatorTransactionHistory(params);
+        if (active) setResult(data);
+      } catch (err) {
+        if (active) setHistoryError(err.message || "Failed to load transaction history.");
+      } finally {
+        if (active) setIsHistoryLoading(false);
+      }
+    }
+
+    loadHistory();
+    return () => { active = false; };
+  }, [appliedFilters, page, pageSize, contextLoading, contextError, isUnassigned, retryTrigger]);
+
+  // Updates the draft date range without changing the displayed results.
   function handleFilterChange(e) {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
   }
 
+  // Applies the draft filters and returns to the first page.
   function handleSearch(e) {
     e.preventDefault();
     setPage(1);
-    loadHistory(filters, 1, pageSize);
+    setAppliedFilters({ ...filters });
   }
 
+  // Clears the draft and applied filters and returns to the first page.
   function handleReset() {
     setFilters(initialFilters);
+    setAppliedFilters(initialFilters);
     setPage(1);
-    loadHistory(initialFilters, 1, pageSize);
   }
 
+  // Requests the selected page with the currently applied filters.
   function handlePageChange(newPage) {
     setPage(newPage);
-    loadHistory(filters, newPage, pageSize);
   }
 
+  // Changes the page size and restarts pagination.
   function handlePageSizeChange(e) {
     const newSize = Number(e.target.value);
     setPageSize(newSize);
     setPage(1);
-    loadHistory(filters, 1, newSize);
   }
 
-  const { items, totalCount, totalPages } = result;
-  const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
-  const rangeEnd = Math.min(page * pageSize, totalCount);
+  const { items, totalCount, totalPages, hasNextPage, hasPreviousPage } = result;
+  const rangeStart = totalCount === 0 ? 0 : (result.page - 1) * result.pageSize + 1;
+  const rangeEnd = Math.min(result.page * result.pageSize, totalCount);
 
+  // Refreshes assignment context and retries the current history page.
   const handleRefresh = async () => {
     await refreshOperatorContext();
-    await loadHistory(filters, page, pageSize);
-    notify("Transaction history refreshed.");
+    setRetryTrigger((current) => current + 1);
   };
 
   const isLoading = contextLoading || isHistoryLoading;
@@ -124,26 +120,14 @@ export default function OperatorTransactionHistory() {
 
       {isUnassigned ? (
         <OperatorUnassignedState />
-      ) : error ? (
-        <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {error.includes("Access denied") ? "Access Denied" : "Error loading history"}
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
-          >
-            {error.includes("Access denied") ? "Refresh assignment" : "Retry"}
-          </button>
-        </div>
       ) : (
         <>
           <form onSubmit={handleSearch} className="mb-6 space-y-3 rounded-lg bg-brand-white-soft p-4">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-sm font-medium text-brand-black">Date From</label>
+                <label htmlFor="history-date-from" className="mb-1 block text-sm font-medium text-brand-black">Date From (UTC)</label>
                 <input
+                  id="history-date-from"
                   type="date"
                   name="dateFrom"
                   value={filters.dateFrom}
@@ -152,8 +136,9 @@ export default function OperatorTransactionHistory() {
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-brand-black">Date To</label>
+                <label htmlFor="history-date-to" className="mb-1 block text-sm font-medium text-brand-black">Date To (UTC)</label>
                 <input
+                  id="history-date-to"
                   type="date"
                   name="dateTo"
                   value={filters.dateTo}
@@ -181,11 +166,25 @@ export default function OperatorTransactionHistory() {
             </div>
           </form>
 
-          <p className="mb-2 text-sm text-brand-muted">
-            Showing {rangeStart}–{rangeEnd} of {totalCount} results
-          </p>
+          {error && (
+            <div role="alert" className="mb-6 rounded-lg border border-red-500 bg-white p-6 shadow-sm">
+              <h3 className="text-lg font-semibold text-gray-900">Error loading history</h3>
+              <p className="mt-2 text-sm text-gray-600">{error}</p>
+              <button
+                type="button"
+                onClick={handleRefresh}
+                className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
-          <div className="overflow-x-auto rounded-lg border border-brand-border bg-brand-white">
+          {!error && !isLoading && <p className="mb-2 text-sm text-brand-muted">
+            Showing {rangeStart}–{rangeEnd} of {totalCount} results
+          </p>}
+
+          {!error && <div className="overflow-x-auto rounded-lg border border-brand-border bg-brand-white">
             <table className="w-full text-left text-sm">
               <thead className="bg-brand-white-soft text-brand-black">
                 <tr>
@@ -209,7 +208,7 @@ export default function OperatorTransactionHistory() {
                 ) : items.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-6 text-center text-brand-muted">
-                      {(filters.dateFrom || filters.dateTo) 
+                      {(appliedFilters.dateFrom || appliedFilters.dateTo)
                         ? "No completed energy transfers matched the selected period."
                         : "No completed energy transfers found."}
                     </td>
@@ -246,9 +245,9 @@ export default function OperatorTransactionHistory() {
                 )}
               </tbody>
             </table>
-          </div>
+          </div>}
 
-          {!isLoading && totalPages > 0 && (
+          {!error && !isLoading && totalPages > 0 && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 text-sm text-brand-black">
                 <span>Rows per page</span>
@@ -268,17 +267,17 @@ export default function OperatorTransactionHistory() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => handlePageChange(page - 1)}
-                  disabled={page <= 1}
+                  disabled={!hasPreviousPage}
                   className="rounded-md border border-brand-green px-3 py-1 text-sm font-medium text-brand-green hover:bg-brand-green-soft disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Previous
                 </button>
                 <span className="text-sm text-brand-black">
-                  Page {page} of {totalPages}
+                  Page {result.page} of {totalPages}
                 </span>
                 <button
                   onClick={() => handlePageChange(page + 1)}
-                  disabled={page >= totalPages}
+                  disabled={!hasNextPage}
                   className="rounded-md border border-brand-green px-3 py-1 text-sm font-medium text-brand-green hover:bg-brand-green-soft disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   Next
