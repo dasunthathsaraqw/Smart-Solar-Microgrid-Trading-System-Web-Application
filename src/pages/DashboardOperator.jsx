@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { getUser } from "../utils/auth";
 import OperatorOverview from "./operator/OperatorOverview";
+import OperatorStationView from "./operator/OperatorStationView";
 import ReservationsPage from "./reservations/ReservationsPage";
 import SlotsPage from "./slots/SlotsPage";
 
@@ -27,6 +28,8 @@ export default function DashboardOperator() {
             <ReservationsPage />
           ) : activeItem === "Update Slots" ? (
             <SlotsPage />
+          ) : activeItem === "Station View" ? (
+            <OperatorStationView />
           ) : (
             <>
               <p className="mb-1 text-sm text-brand-muted">Welcome {user?.name}</p>
