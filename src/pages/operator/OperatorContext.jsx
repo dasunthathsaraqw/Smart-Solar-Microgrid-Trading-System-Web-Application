@@ -37,6 +37,7 @@ export function OperatorProvider({ children }) {
     setIsUnassigned(false);
 
     try {
+      // /auth/me returns the latest persisted assignment; the JWT has no station claim.
       const user = await getCurrentUser();
       updateSessionUser(user);
       setCurrentUser(user);
@@ -45,7 +46,6 @@ export function OperatorProvider({ children }) {
         setStationId(null);
         setAssignedStation(null);
         setIsUnassigned(true);
-        setIsLoading(false);
         return;
       }
 
