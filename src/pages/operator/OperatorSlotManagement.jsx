@@ -8,6 +8,7 @@ import SlotStatusBadge from "../slots/SlotStatusBadge";
 import { formatLocalDate, formatLocalTime } from "../../utils/timeUtils";
 import { useOperatorContext } from "./OperatorContext";
 import OperatorUnassignedState from "./OperatorUnassignedState";
+import PageHeader from "../../components/ui/PageHeader";
 
 const STATUS_TABS = [
   { key: "available", label: "Available" },
@@ -171,13 +172,7 @@ export default function OperatorSlotManagement() {
 
   return (
     <section className="mx-auto max-w-6xl" aria-labelledby="operator-slots-heading">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="operator-slots-heading" className="text-2xl font-semibold text-brand-black">
-            Update Slots
-          </h2>
-          <p className="mt-1 text-sm text-brand-muted">Manage availability for your assigned station only</p>
-        </div>
+      <PageHeader id="operator-slots-heading" title="Update Slots" subtitle="Manage availability for your assigned station only" actions={
         <button
           type="button"
           onClick={handleRefresh}
@@ -186,7 +181,7 @@ export default function OperatorSlotManagement() {
         >
           {isSlotsLoading ? "Refreshing..." : "Refresh assignment"}
         </button>
-      </div>
+      } />
 
       {contextError ? (
         <ErrorPanel title="Unable to load operator context" message={contextError} onRetry={handleRefresh} />

@@ -5,9 +5,22 @@ import { useEffect, useState } from "react";
 import { getStations } from "../../api/stations";
 import { searchReservations } from "../../api/reservations";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
+import PageHeader from "../../components/ui/PageHeader";
+import DataTable from "../../components/ui/DataTable";
 
 const STATUS_OPTIONS = ["", "Pending", "Approved", "Completed", "Cancelled"];
 const PAGE_SIZES = [10, 25, 50];
+
+const HISTORY_COLUMNS = [
+  { key: "prosumerNic", header: "Prosumer NIC" },
+  { key: "prosumerName", header: "Prosumer Name" },
+  { key: "stationName", header: "Station" },
+  { key: "slotDate", header: "Slot Date", render: (r) => new Date(r.slotStartTime).toLocaleDateString() },
+  { key: "slotTime", header: "Slot Time", render: (r) => new Date(r.slotStartTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) },
+  { key: "capacityKw", header: "Capacity (kW)" },
+  { key: "status", header: "Status", render: (r) => <ReservationStatusBadge status={r.status} /> },
+  { key: "createdAt", header: "Created At", render: (r) => new Date(r.createdAt).toLocaleDateString() },
+];
 
 const initialFilters = {
   prosumerNic: "",
@@ -29,6 +42,7 @@ export default function BookingHistoryPage({ onView, onNotify }) {
   const [pageSize, setPageSize] = useState(10);
   const [result, setResult] = useState({ items: [], totalCount: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     getStations()
@@ -39,6 +53,7 @@ export default function BookingHistoryPage({ onView, onNotify }) {
 
   async function runSearch(searchFilters, searchPage, searchPageSize) {
     setIsLoading(true);
+    setLoadError("");
     try {
       const request = {
         prosumerNic: searchFilters.prosumerNic || undefined,
@@ -58,6 +73,7 @@ export default function BookingHistoryPage({ onView, onNotify }) {
       const data = await searchReservations(request);
       setResult(data);
     } catch (err) {
+      setLoadError(err.message);
       onNotify(err.message, "error");
     } finally {
       setIsLoading(false);
@@ -104,7 +120,7 @@ export default function BookingHistoryPage({ onView, onNotify }) {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-semibold text-brand-black">Booking History</h2>
+      <PageHeader title="Booking History" />
 
       <form onSubmit={handleSearch} className="mb-6 space-y-3 rounded-lg bg-brand-white-soft p-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -204,74 +220,35 @@ export default function BookingHistoryPage({ onView, onNotify }) {
         </div>
       </form>
 
-      <p className="mb-2 text-sm text-brand-muted">
+      {!isLoading && !loadError && <p className="mb-2 text-sm text-brand-muted">
         Showing {rangeStart}–{rangeEnd} of {totalCount} results
-      </p>
+      </p>}
 
-      <div className="overflow-x-auto rounded-lg border border-brand-border bg-brand-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-brand-white-soft text-brand-black">
-            <tr>
-              <th className="px-4 py-3">Prosumer NIC</th>
-              <th className="px-4 py-3">Prosumer Name</th>
-              <th className="px-4 py-3">Station</th>
-              <th className="px-4 py-3">Slot Date</th>
-              <th className="px-4 py-3">Slot Time</th>
-              <th className="px-4 py-3">Capacity (kW)</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Created At</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-brand-muted">
-                  Loading...
-                </td>
-              </tr>
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={9} className="px-4 py-6 text-center text-brand-muted">
-                  No bookings match your filters
-                </td>
-              </tr>
-            ) : (
-              items.map((r) => (
-                <tr key={r.id} className="border-t border-brand-border">
-                  <td className="px-4 py-3">{r.prosumerNic}</td>
-                  <td className="px-4 py-3">{r.prosumerName}</td>
-                  <td className="px-4 py-3">{r.stationName}</td>
-                  <td className="px-4 py-3">{new Date(r.slotStartTime).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    {new Date(r.slotStartTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                  </td>
-                  <td className="px-4 py-3">{r.capacityKw}</td>
-                  <td className="px-4 py-3">
-                    <ReservationStatusBadge status={r.status} />
-                  </td>
-                  <td className="px-4 py-3">{new Date(r.createdAt).toLocaleDateString()}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => onView(r.id)}
-                      className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
-                    >
-                      View
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <DataTable
+        columns={HISTORY_COLUMNS}
+        rows={items}
+        getRowKey={(reservation) => reservation.id}
+        isLoading={isLoading}
+        error={loadError}
+        onRetry={() => runSearch(filters, page, pageSize)}
+        emptyMessage="No bookings match your filters"
+        actions={(reservation) => (
+          <button
+            type="button"
+            onClick={() => onView(reservation.id)}
+            className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+          >
+            View
+          </button>
+        )}
+      />
+      {!loadError && <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-sm text-brand-black">
           <span>Rows per page</span>
           <select
             value={pageSize}
             onChange={handlePageSizeChange}
+            disabled={isLoading}
             className="rounded-md border border-brand-border px-2 py-1 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
           >
             {PAGE_SIZES.map((size) => (
@@ -285,7 +262,7 @@ export default function BookingHistoryPage({ onView, onNotify }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => handlePageChange(page - 1)}
-            disabled={page <= 1}
+            disabled={isLoading || page <= 1}
             className="rounded-md border border-brand-green px-3 py-1 text-sm font-medium text-brand-green hover:bg-brand-green-soft disabled:cursor-not-allowed disabled:opacity-40"
           >
             Previous
@@ -295,13 +272,13 @@ export default function BookingHistoryPage({ onView, onNotify }) {
           </span>
           <button
             onClick={() => handlePageChange(page + 1)}
-            disabled={page >= totalPages}
+            disabled={isLoading || page >= totalPages}
             className="rounded-md border border-brand-green px-3 py-1 text-sm font-medium text-brand-green hover:bg-brand-green-soft disabled:cursor-not-allowed disabled:opacity-40"
           >
             Next
           </button>
         </div>
-      </div>
+      </div>}
     </div>
   );
 }

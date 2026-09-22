@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { getStations } from "../../api/stations";
 import { deleteSlot, getSlots } from "../../api/slots";
 import { useConfirm } from "../../components/confirmContext";
+import PageHeader from "../../components/ui/PageHeader";
+import DataTable from "../../components/ui/DataTable";
 import { formatLocalDate, formatLocalTime } from "../../utils/timeUtils";
 import SlotStatusBadge from "./SlotStatusBadge";
 
@@ -13,6 +15,7 @@ const TABS = [
   { key: "past", label: "Past" },
 ];
 
+// Formats an API slot's duration for display.
 function formatDuration(startTime, endTime) {
   const minutes = Math.round((new Date(endTime).getTime() - new Date(startTime).getTime()) / 60000);
   const hours = Math.floor(minutes / 60);
@@ -22,6 +25,15 @@ function formatDuration(startTime, endTime) {
   return `${hours} hr ${remaining} min`;
 }
 
+const SLOT_COLUMNS = [
+  { key: "stationName", header: "Station" },
+  { key: "date", header: "Date", render: (slot) => formatLocalDate(slot.startTime) },
+  { key: "start", header: "Start", render: (slot) => formatLocalTime(slot.startTime) },
+  { key: "end", header: "End", render: (slot) => formatLocalTime(slot.endTime) },
+  { key: "duration", header: "Duration", render: (slot) => formatDuration(slot.startTime, slot.endTime) },
+  { key: "capacityKw", header: "Capacity (kW)" },
+];
+
 export default function SlotsList({ initialStationId, onAdd, onView, onNotify }) {
   const confirm = useConfirm();
   const [stations, setStations] = useState([]);
@@ -30,6 +42,7 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
   const [slots, setSlots] = useState([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     getStations("active")
@@ -41,10 +54,13 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
   const loadSlots = useCallback(
     async (stationId, status) => {
       setIsLoading(true);
+      setLoadError("");
       try {
         const data = await getSlots({ stationId: stationId || undefined, status });
         setSlots(data);
       } catch (err) {
+        setLoadError(err.message);
+        setSlots([]);
         onNotify(err.message, "error");
       } finally {
         setIsLoading(false);
@@ -60,6 +76,7 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
 
   const term = search.trim().toLowerCase();
   const filtered = term ? slots.filter((s) => s.stationName.toLowerCase().includes(term)) : slots;
+  const columns = [...SLOT_COLUMNS, { key: "status", header: "Status", render: (slot) => <SlotStatusBadge isBooked={slot.isBooked} status={activeTab} /> }];
 
   async function handleDelete(id) {
     const confirmed = await confirm({
@@ -80,15 +97,14 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
 
   return (
     <div>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-brand-black">Energy Slot Management</h2>
+      <PageHeader title="Energy Slot Management" actions={
         <button
           onClick={() => onAdd(selectedStationId)}
           className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark"
         >
           + Add Slot
         </button>
-      </div>
+      } />
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <select
@@ -131,73 +147,34 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
 
       <p className="mb-2 text-sm text-brand-muted">{filtered.length} slots</p>
 
-      <div className="overflow-x-auto rounded-lg border border-brand-border bg-brand-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-brand-white-soft text-brand-black">
-            <tr>
-              <th className="px-4 py-3">Station</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Start</th>
-              <th className="px-4 py-3">End</th>
-              <th className="px-4 py-3">Duration</th>
-              <th className="px-4 py-3">Capacity (kW)</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-brand-muted">
-                  Loading...
-                </td>
-              </tr>
-            ) : filtered.length === 0 ? (
-              <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-brand-muted">
-                  No slots found
-                </td>
-              </tr>
-            ) : (
-              filtered.map((s) => {
-                // The API rejects forbidden deletes; its isBooked flag only guides the button.
-                const canModify = !s.isBooked;
-                return (
-                  <tr key={s.id} className="border-t border-brand-border">
-                    <td className="px-4 py-3">{s.stationName}</td>
-                    <td className="px-4 py-3">{formatLocalDate(s.startTime)}</td>
-                    <td className="px-4 py-3">{formatLocalTime(s.startTime)}</td>
-                    <td className="px-4 py-3">{formatLocalTime(s.endTime)}</td>
-                    <td className="px-4 py-3">{formatDuration(s.startTime, s.endTime)}</td>
-                    <td className="px-4 py-3">{s.capacityKw}</td>
-                    <td className="px-4 py-3">
-                      <SlotStatusBadge isBooked={s.isBooked} status={activeTab} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          onClick={() => onView(s.id)}
-                          className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
-                        >
-                          View
-                        </button>
-                        {canModify && (
-                          <button
-                            onClick={() => handleDelete(s.id)}
-                            className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+      <DataTable
+        columns={columns}
+        rows={filtered}
+        getRowKey={(slot) => slot.id}
+        isLoading={isLoading}
+        error={loadError}
+        onRetry={() => loadSlots(selectedStationId, activeTab)}
+        emptyMessage="No slots found"
+        actions={(slot) => (
+          <>
+            <button
+              type="button"
+              onClick={() => onView(slot.id)}
+              className="rounded-md border border-brand-green px-3 py-1 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+            >
+              View
+            </button>
+            {!slot.isBooked && (
+              <button
+                type="button"
+                onClick={() => handleDelete(slot.id)}
+                className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
+              >
+                Delete
+              </button>
             )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </>
+        )}
+      />    </div>
   );
 }

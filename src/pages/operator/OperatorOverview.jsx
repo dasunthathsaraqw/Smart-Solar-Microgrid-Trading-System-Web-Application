@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { getOperatorDashboard } from "../../api/reports";
 import KpiCard from "../dashboard/KpiCard";
+import PageHeader from "../../components/ui/PageHeader";
+import SectionCard from "../../components/ui/SectionCard";
+import ErrorState from "../../components/ui/ErrorState";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
 import { useOperatorContext } from "./OperatorContext";
 import OperatorUnassignedState from "./OperatorUnassignedState";
@@ -66,14 +69,8 @@ export default function OperatorOverview() {
 
   return (
     <section className="mx-auto max-w-6xl" aria-labelledby="operator-overview-heading">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <p className="mb-1 text-sm text-brand-muted">Welcome {operator?.name || "Operator"}</p>
-          <h2 id="operator-overview-heading" className="text-2xl font-semibold text-brand-black">
-            Operator Overview
-          </h2>
-          <p className="mt-1 text-sm text-brand-muted">Live workload for your assigned microgrid station</p>
-        </div>
+      <p className="mb-1 text-sm text-brand-muted">Welcome {operator?.name || "Operator"}</p>
+      <PageHeader id="operator-overview-heading" title="Operator Overview" subtitle="Live workload for your assigned microgrid station" actions={
         <button
           type="button"
           onClick={handleRefresh}
@@ -82,26 +79,14 @@ export default function OperatorOverview() {
         >
           {isLoading ? "Refreshing..." : "Refresh"}
         </button>
-      </div>
+      } />
 
       {isLoading ? (
         <LoadingOverview />
       ) : isUnassigned ? (
         <OperatorUnassignedState />
       ) : error ? (
-        <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {error.includes("Access denied") ? "Access Denied" : "Overview unavailable"}
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">{error}</p>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
-          >
-            {error.includes("Access denied") ? "Refresh assignment" : "Try again"}
-          </button>
-        </div>
+        <ErrorState message={error} onRetry={handleRefresh} retryLabel={error.includes("Access denied") ? "Refresh assignment" : "Try again"} />
       ) : dashboard ? (
         <>
           <AssignedStationCard
@@ -117,15 +102,9 @@ export default function OperatorOverview() {
             <KpiCard label="Approved Future" value={dashboard.approvedFutureCount} />
           </div>
 
-          <div className="rounded-lg border border-brand-border bg-brand-white shadow-sm">
-            <div className="border-b border-brand-border px-4 py-4 sm:px-6">
-              <h3 className="text-lg font-semibold text-brand-black">Upcoming Approved Bookings</h3>
-              <p className="mt-1 text-sm text-brand-muted">
-                Nearest approved transfers are shown first by the backend.
-              </p>
-            </div>
+          <SectionCard title="Upcoming Approved Bookings" subtitle="Nearest approved transfers are shown first by the backend.">
             <UpcomingBookings bookings={upcoming} />
-          </div>
+          </SectionCard>
         </>
       ) : null}
     </section>

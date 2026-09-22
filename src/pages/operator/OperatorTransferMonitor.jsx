@@ -4,6 +4,8 @@ import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
 import OperatorTransferDetail from "./OperatorTransferDetail";
 import { useOperatorContext } from "./OperatorContext";
 import OperatorUnassignedState from "./OperatorUnassignedState";
+import PageHeader from "../../components/ui/PageHeader";
+import ErrorState from "../../components/ui/ErrorState";
 
 const STATUS_TABS = [
   { id: "Approved", label: "Awaiting Transfer" },
@@ -88,13 +90,7 @@ export default function OperatorTransferMonitor() {
 
   return (
     <section className="mx-auto max-w-6xl" aria-labelledby="transfer-monitor-heading">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h2 id="transfer-monitor-heading" className="text-2xl font-semibold text-brand-black">
-            Transfer Monitor
-          </h2>
-          <p className="mt-1 text-sm text-brand-muted">Operational view of bookings for your assigned station</p>
-        </div>
+      <PageHeader id="transfer-monitor-heading" title="Transfer Monitor" subtitle="Operational view of bookings for your assigned station" actions={
         <button
           type="button"
           onClick={handleRefresh}
@@ -103,23 +99,12 @@ export default function OperatorTransferMonitor() {
         >
           {isLoading ? "Refreshing..." : "Refresh"}
         </button>
-      </div>
+      } />
 
       {isUnassigned ? (
         <OperatorUnassignedState />
       ) : error ? (
-        <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900">
-            {error.includes("Access denied") ? "Access Denied" : "Error loading transfers"}
-          </h3>
-          <p className="mt-2 text-sm text-gray-600">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
-          >
-            {error.includes("Access denied") ? "Refresh assignment" : "Retry"}
-          </button>
-        </div>
+        <ErrorState message={error} onRetry={handleRefresh} retryLabel={error.includes("Access denied") ? "Refresh assignment" : "Retry"} />
       ) : (
         <>
           <div className="mb-6 border-b border-brand-border">
