@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCurrentUser } from "../../api/auth";
 import { getOperatorTransactionHistory } from "../../api/reservations";
-import { updateSessionUser } from "../../utils/auth";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
 import OperatorTransferDetail from "./OperatorTransferDetail";
+import { useOperatorContext } from "./OperatorContext";
+import OperatorUnassignedState from "./OperatorUnassignedState";
 
 const PAGE_SIZES = [10, 25, 50];
 
@@ -13,33 +13,33 @@ const initialFilters = {
 };
 
 export default function OperatorTransactionHistory() {
+  const {
+    isUnassigned,
+    isLoading: contextLoading,
+    error: contextError,
+    refreshOperatorContext
+  } = useOperatorContext();
+
   const [filters, setFilters] = useState(initialFilters);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   
   const [result, setResult] = useState({ items: [], totalCount: 0, totalPages: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUnassigned, setIsUnassigned] = useState(false);
-  const [error, setError] = useState("");
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
   const [selectedReservationId, setSelectedReservationId] = useState(null);
 
   const loadHistory = useCallback(async (currentFilters, currentPage, currentPageSize) => {
-    setIsLoading(true);
-    setError("");
-    setIsUnassigned(false);
+    if (isUnassigned) {
+      setResult({ items: [], totalCount: 0, totalPages: 0 });
+      setIsHistoryLoading(false);
+      return;
+    }
+
+    setIsHistoryLoading(true);
+    setHistoryError("");
 
     try {
-      const currentUser = await getCurrentUser();
-      updateSessionUser(currentUser);
-
-      if (!currentUser.stationId) {
-        setIsUnassigned(true);
-        setResult({ items: [], totalCount: 0, totalPages: 0 });
-        return;
-      }
-
-      setIsUnassigned(false);
-
       const params = {
         dateFrom: currentFilters.dateFrom ? `${currentFilters.dateFrom}T00:00:00Z` : undefined,
         dateTo: currentFilters.dateTo ? `${currentFilters.dateTo}T23:59:59Z` : undefined,
@@ -51,20 +51,22 @@ export default function OperatorTransactionHistory() {
       setResult(data);
     } catch (err) {
       if (err.response?.status === 403) {
-        setError(err.response?.data?.message || "You do not have access to this station's history.");
+        setHistoryError(err.response?.data?.message || "You do not have access to this station's history.");
       } else {
-        setError(err.message || "Failed to load transaction history.");
+        setHistoryError(err.message || "Failed to load transaction history.");
       }
       setResult({ items: [], totalCount: 0, totalPages: 0 });
     } finally {
-      setIsLoading(false);
+      setIsHistoryLoading(false);
     }
-  }, []);
+  }, [isUnassigned]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load of transaction history
-    loadHistory(initialFilters, 1, 10);
-  }, [loadHistory]);
+    if (!contextLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadHistory(initialFilters, 1, 10);
+    }
+  }, [contextLoading, loadHistory]);
 
   function handleFilterChange(e) {
     const { name, value } = e.target;
@@ -99,6 +101,14 @@ export default function OperatorTransactionHistory() {
   const rangeStart = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, totalCount);
 
+  const handleRefresh = async () => {
+    await refreshOperatorContext();
+    await loadHistory(filters, page, pageSize);
+  };
+
+  const isLoading = contextLoading || isHistoryLoading;
+  const error = contextError || historyError;
+
   return (
     <section className="mx-auto max-w-6xl" aria-labelledby="operator-history-heading">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -111,16 +121,13 @@ export default function OperatorTransactionHistory() {
       </div>
 
       {isUnassigned ? (
-        <div role="status" className="rounded-lg border-l-4 border-brand-green bg-brand-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-brand-black">No station assigned</h3>
-          <p className="mt-2 text-sm text-brand-muted">Contact Backoffice to receive a station assignment.</p>
-        </div>
+        <OperatorUnassignedState />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900">Error loading history</h3>
           <p className="mt-2 text-sm text-gray-600">{error}</p>
           <button
-            onClick={() => loadHistory(filters, page, pageSize)}
+            onClick={handleRefresh}
             className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
           >
             Retry

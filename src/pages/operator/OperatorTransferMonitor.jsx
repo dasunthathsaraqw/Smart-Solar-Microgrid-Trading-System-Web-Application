@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { getCurrentUser } from "../../api/auth";
 import { approveReservation, getReservations } from "../../api/reservations";
-import { updateSessionUser } from "../../utils/auth";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
 import OperatorTransferDetail from "./OperatorTransferDetail";
+import { useOperatorContext } from "./OperatorContext";
+import OperatorUnassignedState from "./OperatorUnassignedState";
 
 const STATUS_TABS = [
   { id: "Approved", label: "Awaiting Transfer" },
@@ -13,54 +13,53 @@ const STATUS_TABS = [
 ];
 
 export default function OperatorTransferMonitor() {
+  const {
+    isUnassigned,
+    isLoading: contextLoading,
+    error: contextError,
+    refreshOperatorContext
+  } = useOperatorContext();
+
   const [activeTab, setActiveTab] = useState("Approved");
   const [reservations, setReservations] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isUnassigned, setIsUnassigned] = useState(false);
-  const [error, setError] = useState("");
+  const [isTransfersLoading, setIsTransfersLoading] = useState(true);
+  const [transfersError, setTransfersError] = useState("");
   const [actionError, setActionError] = useState("");
   const [isProcessing, setIsProcessing] = useState(null);
   const [selectedReservationId, setSelectedReservationId] = useState(null);
 
   const loadTransfers = useCallback(async (status) => {
-    setIsLoading(true);
-    setError("");
+    if (isUnassigned) {
+      setReservations([]);
+      setIsTransfersLoading(false);
+      return;
+    }
+
+    setIsTransfersLoading(true);
+    setTransfersError("");
     setActionError("");
-    setIsUnassigned(false);
 
     try {
-      const currentUser = await getCurrentUser();
-      updateSessionUser(currentUser);
-
-      if (!currentUser.stationId) {
-        setIsUnassigned(true);
-        setReservations([]);
-        return;
-      }
-
-      setIsUnassigned(false);
-      
       const data = await getReservations({ status });
-      // The API returns either an array directly, or an object with items depending on pagination.
-      // Based on getReservations it usually returns the raw array if unpaginated, or items if paginated.
-      // Let's assume it returns an array based on standard Member 2 usage unless it has items.
       setReservations(Array.isArray(data) ? data : data.items || []);
     } catch (err) {
       if (err.response?.status === 403) {
-        setError(err.response?.data?.message || "You do not have access to this station.");
+        setTransfersError(err.response?.data?.message || "You do not have access to this station.");
       } else {
-        setError(err.message || "Failed to load transfers.");
+        setTransfersError(err.message || "Failed to load transfers.");
       }
       setReservations([]);
     } finally {
-      setIsLoading(false);
+      setIsTransfersLoading(false);
     }
-  }, []);
+  }, [isUnassigned]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load
-    loadTransfers(activeTab);
-  }, [activeTab, loadTransfers]);
+    if (!contextLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      loadTransfers(activeTab);
+    }
+  }, [activeTab, contextLoading, loadTransfers]);
 
   async function handleApprove(id) {
     setIsProcessing(id);
@@ -75,6 +74,14 @@ export default function OperatorTransferMonitor() {
     }
   }
 
+  const handleRefresh = async () => {
+    await refreshOperatorContext();
+    await loadTransfers(activeTab);
+  };
+
+  const isLoading = contextLoading || isTransfersLoading;
+  const error = contextError || transfersError;
+
   return (
     <section className="mx-auto max-w-6xl" aria-labelledby="transfer-monitor-heading">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -86,7 +93,7 @@ export default function OperatorTransferMonitor() {
         </div>
         <button
           type="button"
-          onClick={() => loadTransfers(activeTab)}
+          onClick={handleRefresh}
           disabled={isLoading}
           className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white transition-colors hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-60"
         >
@@ -95,16 +102,13 @@ export default function OperatorTransferMonitor() {
       </div>
 
       {isUnassigned ? (
-        <div role="status" className="rounded-lg border-l-4 border-brand-green bg-brand-white p-6 shadow-sm">
-          <h3 className="text-lg font-semibold text-brand-black">No station assigned</h3>
-          <p className="mt-2 text-sm text-brand-muted">Contact Backoffice to receive a station assignment before monitoring transfers.</p>
-        </div>
+        <OperatorUnassignedState />
       ) : error ? (
         <div role="alert" className="rounded-lg border border-red-500 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-gray-900">Error loading transfers</h3>
           <p className="mt-2 text-sm text-gray-600">{error}</p>
           <button
-            onClick={() => loadTransfers(activeTab)}
+            onClick={handleRefresh}
             className="mt-4 rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
           >
             Retry
