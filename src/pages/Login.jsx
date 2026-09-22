@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
-import { saveSession, dashboardPathForRole } from "../utils/auth";
+import { clearSession, saveSession, dashboardPathForRole } from "../utils/auth";
 import loginImage from "../assets/img/login-screen-image-v2.png";
 
 export default function Login() {
@@ -12,12 +12,23 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Uses the API's login error message and only persists roles allowed in the web portal.
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
     setIsSubmitting(true);
     try {
       const result = await login(email, password);
+      if (result.role === "Prosumer") {
+        clearSession();
+        setError("Prosumers use the mobile app. Please sign in there.");
+        return;
+      }
+      if (result.role !== "Backoffice" && result.role !== "GridOperator") {
+        clearSession();
+        setError("This account cannot access the web portal.");
+        return;
+      }
       saveSession(result);
       navigate(dashboardPathForRole(result.role), { replace: true });
     } catch (err) {
