@@ -13,6 +13,7 @@ import {
   getTopStations,
 } from "../../api/reports";
 import { approveReservation } from "../../api/reservations";
+import { getPendingDeactivations } from "../../api/prosumers";
 import Toast from "../../components/Toast";
 import { useConfirm } from "../../components/confirmContext";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
@@ -30,10 +31,13 @@ export default function DashboardOverview({ userName, onNavigate }) {
   const [energyTraded, setEnergyTraded] = useState([]);
   const [pendingApprovals, setPendingApprovals] = useState([]);
   const [recentBookings, setRecentBookings] = useState([]);
+  const [deactivationRequestCount, setDeactivationRequestCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
+    setLoadError("");
     try {
       const [
         summaryData,
@@ -43,6 +47,7 @@ export default function DashboardOverview({ userName, onNavigate }) {
         energyTradedData,
         pendingData,
         recentData,
+        deactivationRequests,
       ] = await Promise.all([
         getDashboardSummary(),
         getReservationsPerDay(7),
@@ -51,6 +56,7 @@ export default function DashboardOverview({ userName, onNavigate }) {
         getEnergyTraded(30),
         getPendingApprovals(10),
         getRecentBookings(10),
+        getPendingDeactivations(),
       ]);
 
       setSummary(summaryData);
@@ -60,7 +66,9 @@ export default function DashboardOverview({ userName, onNavigate }) {
       setEnergyTraded(energyTradedData);
       setPendingApprovals(pendingData);
       setRecentBookings(recentData);
+      setDeactivationRequestCount(deactivationRequests.length);
     } catch (err) {
+      setLoadError(err.message);
       notify(err.message, "error");
     } finally {
       setIsLoading(false);
@@ -88,8 +96,17 @@ export default function DashboardOverview({ userName, onNavigate }) {
     }
   }
 
-  if (isLoading || !summary) {
+  if (isLoading) {
     return <p className="text-brand-muted">Loading dashboard...</p>;
+  }
+
+  if (loadError || !summary) {
+    return (
+      <div role="alert" className="rounded-lg border border-brand-border bg-brand-white p-6">
+        <p className="text-sm text-brand-black">{loadError || "Dashboard data is unavailable."}</p>
+        <button onClick={fetchAll} className="mt-4 text-sm font-medium text-brand-green hover:underline">Retry</button>
+      </div>
+    );
   }
 
   const perDayChart = {
@@ -138,7 +155,7 @@ export default function DashboardOverview({ userName, onNavigate }) {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-semibold text-brand-black">Backoffice Dashboard</h2>
-          <p className="text-sm text-brand-muted">Welcome {userName}, this is the Backoffice dashboard</p>
+          <p className="text-sm text-brand-muted">Welcome {userName}. Review live activity and requests below.</p>
         </div>
         <button
           onClick={fetchAll}
@@ -163,6 +180,17 @@ export default function DashboardOverview({ userName, onNavigate }) {
           onClick={() => onNavigate("Reservation Management", { status: "Approved" })}
         />
         <KpiCard label="Active Prosumers" value={summary.activeProsumers} onClick={() => onNavigate("Prosumer Management")} />
+        <KpiCard
+          label="Pending approvals"
+          value={summary.pendingProsumers}
+          onClick={() => onNavigate("Prosumer Management", { prosumerTab: "pending" })}
+        />
+        <KpiCard
+          label="Deactivation requests"
+          value={deactivationRequestCount}
+          variant="outline"
+          onClick={() => onNavigate("Prosumer Management", { prosumerTab: "requests" })}
+        />
         <KpiCard label="Active Stations" value={summary.activeStations} onClick={() => onNavigate("Station Management")} />
         <KpiCard label="Completed Reservations" value={summary.completedReservations} />
         <KpiCard label="Cancelled Reservations" value={summary.cancelledReservations} variant="outline-black" />
@@ -188,7 +216,7 @@ export default function DashboardOverview({ userName, onNavigate }) {
       </div>
 
       <div className="mb-8">
-        <h3 className="mb-3 text-lg font-semibold text-brand-black">Pending Approvals</h3>
+        <h3 className="mb-3 text-lg font-semibold text-brand-black">Pending Reservation Approvals</h3>
         <BookingTable
           rows={pendingApprovals}
           emptyMessage="No pending approvals"
