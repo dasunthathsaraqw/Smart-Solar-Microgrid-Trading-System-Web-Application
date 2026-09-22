@@ -1,8 +1,9 @@
 // users.js (api) — calls to the Backoffice-only /api/users endpoints.
 import { apiClient } from "./client";
 
-export async function createUser({ name, email, password, role, nic }) {
-  const response = await apiClient.post("/users", { name, email, password, role, nic });
+// Sends the optional operator station assignment with the user creation request.
+export async function createUser({ name, email, password, role, nic, stationId }) {
+  const response = await apiClient.post("/users", { name, email, password, role, nic, stationId });
   return response.data;
 }
 
