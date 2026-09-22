@@ -15,8 +15,6 @@ export default function SlotDetail({ id, expectedStationId, onBack, onNotify, on
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Captured once at mount rather than calling Date.now() directly during render.
-  const [now] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -146,8 +144,8 @@ export default function SlotDetail({ id, expectedStationId, onBack, onNotify, on
     );
   }
 
-  const isPast = new Date(slot.endTime).getTime() <= now;
-  const canModify = !slot.isBooked && !isPast;
+  // The server's isBooked flag guides the UI; update/delete remain API-authorized.
+  const canModify = !slot.isBooked;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -158,7 +156,7 @@ export default function SlotDetail({ id, expectedStationId, onBack, onNotify, on
       <div className="rounded-lg border border-brand-border bg-brand-white p-6">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-xl font-semibold text-brand-black">{slot.stationName}</h2>
-          <SlotStatusBadge isBooked={slot.isBooked} endTime={slot.endTime} />
+          <SlotStatusBadge isBooked={slot.isBooked} />
         </div>
 
         {slot.isBooked && (

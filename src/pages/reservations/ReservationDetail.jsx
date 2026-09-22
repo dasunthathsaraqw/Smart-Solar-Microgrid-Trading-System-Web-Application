@@ -2,7 +2,7 @@
 // The backend is the sole authority on every rule here (12-hour notice, status transitions);
 // this view only reflects whatever the API allows or reports back.
 import { useCallback, useEffect, useState } from "react";
-import { getSlots } from "../../api/slots";
+import { getAvailableSlotsByStation } from "../../api/slots";
 import {
   approveReservation,
   cancelReservation,
@@ -24,6 +24,8 @@ export default function ReservationDetail({ id, onBack, onViewQr, onNotify }) {
   const [error, setError] = useState("");
   const [isEditingSlot, setIsEditingSlot] = useState(false);
   const [availableSlots, setAvailableSlots] = useState([]);
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
+  const [slotsError, setSlotsError] = useState("");
   const [newSlotId, setNewSlotId] = useState("");
 
   const load = useCallback(async () => {
@@ -97,15 +99,19 @@ export default function ReservationDetail({ id, onBack, onViewQr, onNotify }) {
       return;
     }
 
+    setIsEditingSlot(true);
+    setIsLoadingSlots(true);
+    setSlotsError("");
+    setAvailableSlots([]);
+    setNewSlotId("");
     try {
-      const slots = await getSlots({ stationId: reservation.stationId, status: "available" });
-      const now = Date.now();
-      const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-      setAvailableSlots(slots.filter((s) => new Date(s.startTime).getTime() - now <= sevenDaysMs));
-      setNewSlotId("");
-      setIsEditingSlot(true);
+      // The API decides which slots are bookable; no browser-side booking window is applied.
+      const slots = await getAvailableSlotsByStation(reservation.stationId);
+      setAvailableSlots(slots);
     } catch (err) {
-      onNotify(err.message, "error");
+      setSlotsError(err.message);
+    } finally {
+      setIsLoadingSlots(false);
     }
   }
 
@@ -173,11 +179,12 @@ export default function ReservationDetail({ id, onBack, onViewQr, onNotify }) {
               <label className="mb-1 block text-sm font-medium text-brand-black">Move to slot</label>
               <select
                 value={newSlotId}
+                disabled={isLoadingSlots || Boolean(slotsError) || availableSlots.length === 0}
                 onChange={(e) => setNewSlotId(e.target.value)}
-                className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
+                className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green disabled:opacity-60"
               >
                 <option value="" disabled>
-                  Select a slot
+                  {isLoadingSlots ? "Loading available slots..." : "Select a slot"}
                 </option>
                 {availableSlots.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -187,10 +194,15 @@ export default function ReservationDetail({ id, onBack, onViewQr, onNotify }) {
                   </option>
                 ))}
               </select>
+              {slotsError && <p role="alert" className="mt-2 text-sm text-red-700">{slotsError}</p>}
+              {!isLoadingSlots && !slotsError && availableSlots.length === 0 && (
+                <p className="mt-2 text-sm text-brand-muted">No bookable slots are available for this station.</p>
+              )}
               <div className="mt-3 flex gap-3">
                 <button
                   onClick={handleSaveSlot}
-                  className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
+                  disabled={isLoadingSlots || Boolean(slotsError) || availableSlots.length === 0}
+                  className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark disabled:opacity-60"
                 >
                   Save Slot
                 </button>
