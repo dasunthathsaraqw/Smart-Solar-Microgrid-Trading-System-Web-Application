@@ -258,8 +258,6 @@ export default function OperatorSlotManagement() {
 }
 
 function OperatorSlotsList({ slots, activeTab, isLoading, deletingId, onTabChange, onAdd, onView, onDelete }) {
-  const [now] = useState(() => Date.now());
-
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -320,7 +318,8 @@ function OperatorSlotsList({ slots, activeTab, isLoading, deletingId, onTabChang
               </tr>
             ) : (
               slots.map((slot) => {
-                const canModify = !slot.isBooked && new Date(slot.endTime).getTime() > now;
+                // The API's isBooked flag guides actions; the API decides whether deletion succeeds.
+                const canModify = !slot.isBooked;
                 return (
                   <tr key={slot.id} className="border-t border-brand-border">
                     <td className="px-4 py-3">{formatLocalDate(slot.startTime)}</td>
@@ -329,7 +328,7 @@ function OperatorSlotsList({ slots, activeTab, isLoading, deletingId, onTabChang
                     <td className="px-4 py-3">{formatDuration(slot.startTime, slot.endTime)}</td>
                     <td className="px-4 py-3">{slot.capacityKw}</td>
                     <td className="px-4 py-3">
-                      <SlotStatusBadge isBooked={slot.isBooked} endTime={slot.endTime} />
+                      <SlotStatusBadge isBooked={slot.isBooked} status={activeTab} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
