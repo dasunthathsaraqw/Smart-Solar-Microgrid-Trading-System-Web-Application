@@ -24,6 +24,8 @@ The dev server prints a local URL (typically `http://localhost:5173`).
 
 `VITE_API_BASE` (see `.env.example`) points at the backend API, e.g. `http://localhost:5151/api`.
 
+Web station maps use OpenStreetMap tiles through Leaflet, avoiding a browser billing key. The Android app requires Google Maps separately.
+
 ## Default seed login
 
 - Email: `admin@smartsolar.com`

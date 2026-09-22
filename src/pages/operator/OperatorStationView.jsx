@@ -6,6 +6,8 @@ import { useOperatorContext } from "./OperatorContext";
 import OperatorUnassignedState from "./OperatorUnassignedState";
 import PageHeader from "../../components/ui/PageHeader";
 import ErrorState from "../../components/ui/ErrorState";
+import StationMap from "../../components/StationMap";
+import SectionCard from "../../components/ui/SectionCard";
 
 export default function OperatorStationView() {
   const {
@@ -149,6 +151,10 @@ export default function OperatorStationView() {
               </dl>
             </div>
           </div>
+
+          <SectionCard title="Station location" subtitle="Map of your assigned station" className="mb-8">
+            <StationMap stations={[station]} readOnly />
+          </SectionCard>
 
           <div className="rounded-lg border border-brand-border bg-brand-white shadow-sm">
             <div className="flex flex-wrap items-center justify-between border-b border-brand-border px-4 py-4 sm:px-6">
