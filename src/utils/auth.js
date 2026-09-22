@@ -84,5 +84,6 @@ export function isTokenExpired() {
 export function dashboardPathForRole(role) {
   if (role === "Backoffice") return "/dashboard/backoffice";
   if (role === "GridOperator") return "/dashboard/operator";
+  if (role === "Prosumer") return "/dashboard/prosumer";
   return "/login";
 }

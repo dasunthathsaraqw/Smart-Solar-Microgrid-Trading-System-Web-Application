@@ -5,6 +5,7 @@ import Login from "./pages/Login";
 import CreateAccount from "./pages/CreateAccount";
 import DashboardBackoffice from "./pages/DashboardBackoffice";
 import DashboardOperator from "./pages/DashboardOperator";
+import DashboardProsumer from "./pages/DashboardProsumer";
 import RequireAuth from "./components/RequireAuth";
 import { ConfirmProvider } from "./components/ConfirmProvider";
 
@@ -36,6 +37,14 @@ function App() {
             element={
               <RequireAuth allowedRoles={["GridOperator"]}>
                 <DashboardOperator />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/dashboard/prosumer"
+            element={
+              <RequireAuth allowedRoles={["Prosumer"]}>
+                <DashboardProsumer />
               </RequireAuth>
             }
           />
