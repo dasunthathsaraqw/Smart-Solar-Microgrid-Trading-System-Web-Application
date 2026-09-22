@@ -6,10 +6,10 @@ import { getUser } from "../utils/auth";
 import OperatorOverview from "./operator/OperatorOverview";
 import OperatorStationView from "./operator/OperatorStationView";
 import OperatorTransactionHistory from "./operator/OperatorTransactionHistory";
-import ReservationsPage from "./reservations/ReservationsPage";
+import OperatorTransferMonitor from "./operator/OperatorTransferMonitor";
 import SlotsPage from "./slots/SlotsPage";
 
-const NAV_ITEMS = ["Overview", "Monitor Bookings", "Update Slots", "Transaction History", "Station View"];
+const NAV_ITEMS = ["Overview", "Transfer Monitor", "Update Slots", "Transaction History", "Station View"];
 
 export default function DashboardOperator() {
   const user = getUser();
@@ -25,8 +25,8 @@ export default function DashboardOperator() {
         <main className="flex-1 px-6 py-10 md:px-10">
           {activeItem === "Overview" ? (
             <OperatorOverview />
-          ) : activeItem === "Monitor Bookings" ? (
-            <ReservationsPage />
+          ) : activeItem === "Transfer Monitor" ? (
+            <OperatorTransferMonitor />
           ) : activeItem === "Update Slots" ? (
             <SlotsPage />
           ) : activeItem === "Transaction History" ? (
