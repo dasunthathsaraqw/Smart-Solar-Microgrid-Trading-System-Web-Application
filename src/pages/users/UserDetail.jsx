@@ -23,11 +23,14 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
   const [isLoadingStations, setIsLoadingStations] = useState(true);
 
   useEffect(() => {
-    getStations("active")
+    getStations()
       .then((data) => setStations(Array.isArray(data) ? data : []))
       .catch((err) => setStationsError(err.message || "Unable to load active stations."))
       .finally(() => setIsLoadingStations(false));
   }, []);
+
+  // Keeps only API-active stations in the edit selector while retaining all names for display.
+  const activeStations = stations.filter((station) => station.isActive);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -167,7 +170,7 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
                   <p className="text-sm text-brand-muted">Loading active stations...</p>
                 ) : stationsError ? (
                   <p className="text-sm text-red-600">{stationsError}</p>
-                ) : stations.length === 0 ? (
+                ) : activeStations.length === 0 ? (
                   <p className="text-sm text-brand-muted">No active stations available.</p>
                 ) : (
                   <select
@@ -176,7 +179,12 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
                     className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
                   >
                     <option value="">No station assigned</option>
-                    {stations.map((s) => (
+                    {form.stationId && !activeStations.some((s) => s.id === form.stationId) && (
+                      <option value={form.stationId} disabled>
+                        Current assignment unavailable — Station {form.stationId}
+                      </option>
+                    )}
+                    {activeStations.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name || s.stationName}
                       </option>
@@ -185,11 +193,11 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
                 )
               ) : (
                 <p className="rounded-md border border-brand-border bg-brand-white-soft px-3 py-2 text-brand-black">
-                  {user.stationId
-                    ? stations.find((s) => s.id === user.stationId)?.name ||
-                      stations.find((s) => s.id === user.stationId)?.stationName ||
-                      "Station " + user.stationId
-                    : "Not assigned"}
+                  {!user.stationId
+                    ? "Not assigned"
+                    : isLoadingStations
+                      ? "Loading station..."
+                      : stations.find((s) => s.id === user.stationId)?.stationName || `Station ${user.stationId}`}
                 </p>
               )}
             </div>
