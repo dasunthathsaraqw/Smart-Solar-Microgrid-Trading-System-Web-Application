@@ -3,6 +3,7 @@
 // whether a deactivation is allowed (self / last-Backoffice); this view just shows its response.
 import { useCallback, useEffect, useState } from "react";
 import { deactivateUser, getUsers, reactivateUser } from "../../api/users";
+import { getStations } from "../../api/stations";
 import { useConfirm } from "../../components/confirmContext";
 import UserRoleBadge from "./UserRoleBadge";
 import UserStatusBadge from "./UserStatusBadge";
@@ -17,8 +18,17 @@ export default function UsersList({ onAdd, onView, onNotify }) {
   const [role, setRole] = useState("");
   const [status, setStatus] = useState("active");
   const [users, setUsers] = useState([]);
+  const [stations, setStations] = useState([]);
+  const [isLoadingStations, setIsLoadingStations] = useState(true);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    getStations()
+      .then((data) => setStations(Array.isArray(data) ? data : []))
+      .catch((err) => onNotify(err.message, "error"))
+      .finally(() => setIsLoadingStations(false));
+  }, [onNotify]);
 
   const loadUsers = useCallback(
     async (roleFilter, statusFilter) => {
@@ -131,6 +141,7 @@ export default function UsersList({ onAdd, onView, onNotify }) {
               <th className="px-4 py-3">Name</th>
               <th className="px-4 py-3">Email</th>
               <th className="px-4 py-3">Role</th>
+              <th className="px-4 py-3">Assigned Station</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Created At</th>
               <th className="px-4 py-3">Actions</th>
@@ -139,13 +150,13 @@ export default function UsersList({ onAdd, onView, onNotify }) {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-brand-muted">
+                <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
                   Loading...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-brand-muted">
+                <td colSpan={7} className="px-4 py-6 text-center text-brand-muted">
                   No users found
                 </td>
               </tr>
@@ -156,6 +167,15 @@ export default function UsersList({ onAdd, onView, onNotify }) {
                   <td className="px-4 py-3">{u.email}</td>
                   <td className="px-4 py-3">
                     <UserRoleBadge role={u.role} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.role !== "GridOperator"
+                      ? "—"
+                      : !u.stationId
+                        ? "Not assigned"
+                        : isLoadingStations
+                          ? "Loading station..."
+                          : stations.find((station) => station.id === u.stationId)?.stationName || `Station ${u.stationId}`}
                   </td>
                   <td className="px-4 py-3">
                     <UserStatusBadge isActive={u.isActive} />
