@@ -3,6 +3,7 @@ import { getCurrentUser } from "../../api/auth";
 import { approveReservation, getReservations } from "../../api/reservations";
 import { updateSessionUser } from "../../utils/auth";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
+import OperatorTransferDetail from "./OperatorTransferDetail";
 
 const STATUS_TABS = [
   { id: "Approved", label: "Awaiting Transfer" },
@@ -19,6 +20,7 @@ export default function OperatorTransferMonitor() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [isProcessing, setIsProcessing] = useState(null);
+  const [selectedReservationId, setSelectedReservationId] = useState(null);
 
   const loadTransfers = useCallback(async (status) => {
     setIsLoading(true);
@@ -180,6 +182,12 @@ export default function OperatorTransferMonitor() {
                         <ReservationStatusBadge status={res.status} />
                       </td>
                       <td className="px-4 py-3 sm:pr-6 text-brand-black text-sm">
+                        <button
+                          onClick={() => setSelectedReservationId(res.id)}
+                          className="mr-3 rounded-md border border-brand-green px-3 py-1.5 text-xs font-medium text-brand-green hover:bg-brand-green-soft"
+                        >
+                          View Details
+                        </button>
                         {activeTab === "Pending" && (
                           <button
                             onClick={() => handleApprove(res.id)}
@@ -206,6 +214,13 @@ export default function OperatorTransferMonitor() {
             </table>
           </div>
         </>
+      )}
+      
+      {selectedReservationId && (
+        <OperatorTransferDetail
+          reservationId={selectedReservationId}
+          onClose={() => setSelectedReservationId(null)}
+        />
       )}
     </section>
   );
