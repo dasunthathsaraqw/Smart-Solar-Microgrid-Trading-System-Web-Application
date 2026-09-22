@@ -1,13 +1,10 @@
 // ReservationCreateForm.jsx — Backoffice/Operator books a slot on behalf of a prosumer.
-// The slot dropdown is defensively filtered to the next 7 days client-side, but the backend
-// is the actual source of truth for every rule here (7-day window, station/prosumer active, etc).
+// The API alone decides which slots are bookable and whether reservation creation succeeds.
 import { useEffect, useMemo, useState } from "react";
 import { getProsumers } from "../../api/prosumers";
 import { getStations } from "../../api/stations";
-import { getSlots } from "../../api/slots";
+import { getAvailableSlotsByStation } from "../../api/slots";
 import { createReservation } from "../../api/reservations";
-
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function ReservationCreateForm({ onCancel, onCreated, onNotify }) {
   const [prosumers, setProsumers] = useState([]);
@@ -17,6 +14,8 @@ export default function ReservationCreateForm({ onCancel, onCreated, onNotify })
   const [stationId, setStationId] = useState("");
   const [slotId, setSlotId] = useState("");
   const [error, setError] = useState("");
+  const [slotsError, setSlotsError] = useState("");
+  const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -30,20 +29,31 @@ export default function ReservationCreateForm({ onCancel, onCreated, onNotify })
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     if (!stationId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting dependent slot state when station selection is cleared
       setSlots([]);
       setSlotId("");
-      return;
+      setSlotsError("");
+      setIsLoadingSlots(false);
+      return () => { cancelled = true; };
     }
 
-    getSlots({ stationId, status: "available" })
+    // This endpoint applies the server's current booking window and availability rules.
+    setIsLoadingSlots(true);
+    setSlots([]);
+    setSlotsError("");
+    getAvailableSlotsByStation(stationId)
       .then((data) => {
-        const now = Date.now();
-        setSlots(data.filter((s) => new Date(s.startTime).getTime() - now <= SEVEN_DAYS_MS));
+        if (!cancelled) setSlots(data);
       })
-      .catch((err) => onNotify(err.message, "error"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch((err) => {
+        if (!cancelled) setSlotsError(err.message);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingSlots(false);
+      });
+    return () => { cancelled = true; };
   }, [stationId]);
 
   const selectedProsumer = prosumers.find((p) => p.nic === prosumerNic);
@@ -121,13 +131,13 @@ export default function ReservationCreateForm({ onCancel, onCreated, onNotify })
           <label className="mb-1 block text-sm font-medium text-brand-black">Slot</label>
           <select
             required
-            disabled={!stationId}
+            disabled={!stationId || isLoadingSlots || Boolean(slotsError)}
             value={slotId}
             onChange={(e) => setSlotId(e.target.value)}
             className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green disabled:bg-brand-white-soft"
           >
             <option value="" disabled>
-              {stationId ? "Select a slot" : "Select a station first"}
+              {isLoadingSlots ? "Loading available slots..." : stationId ? "Select a slot" : "Select a station first"}
             </option>
             {slots.map((s) => (
               <option key={s.id} value={s.id}>
@@ -137,8 +147,9 @@ export default function ReservationCreateForm({ onCancel, onCreated, onNotify })
               </option>
             ))}
           </select>
-          {stationId && slots.length === 0 && (
-            <p className="mt-1 text-xs text-brand-muted">No available slots within the next 7 days for this station.</p>
+          {slotsError && <p role="alert" className="mt-1 text-sm text-red-700">{slotsError}</p>}
+          {stationId && !isLoadingSlots && !slotsError && slots.length === 0 && (
+            <p className="mt-1 text-xs text-brand-muted">No bookable slots are available for this station.</p>
           )}
         </div>
 
