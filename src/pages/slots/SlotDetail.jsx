@@ -10,20 +10,28 @@ function toTimeInputValue(isoString) {
   return new Date(isoString).toISOString().slice(11, 16);
 }
 
-export default function SlotDetail({ id, onBack, onNotify }) {
+export default function SlotDetail({ id, expectedStationId, onBack, onNotify, onAccessDenied }) {
   const confirm = useConfirm();
   const [slot, setSlot] = useState(null);
   const [form, setForm] = useState({ startTime: "", endTime: "", capacityKw: "" });
   const [isEditing, setIsEditing] = useState(false);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   // Captured once at mount rather than calling Date.now() directly during render.
   const [now] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     setIsLoading(true);
+    setError("");
     try {
       const data = await getSlotById(id);
+      if (expectedStationId && data.stationId !== expectedStationId) {
+        setSlot(null);
+        setError("Access denied. Your station assignment may have changed.");
+        await onAccessDenied?.();
+        return;
+      }
       setSlot(data);
       setForm({
         startTime: toTimeInputValue(data.startTime),
@@ -31,11 +39,19 @@ export default function SlotDetail({ id, onBack, onNotify }) {
         capacityKw: data.capacityKw,
       });
     } catch (err) {
-      onNotify(err.message, "error");
+      setSlot(null);
+      if (isStationAccessDenied(err)) {
+        const message = "Access denied. Your station assignment may have changed.";
+        setError(message);
+        onNotify(message, "error");
+        await onAccessDenied?.();
+      } else {
+        setError(err.message || "Unable to load this slot.");
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [id, onNotify]);
+  }, [expectedStationId, id, onAccessDenied, onNotify]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on id change; loading flag is set before the request
@@ -47,6 +63,7 @@ export default function SlotDetail({ id, onBack, onNotify }) {
   }
 
   async function handleSave() {
+    if (isSubmitting) return;
     setError("");
     if (!(Number(form.capacityKw) > 0)) {
       setError("Capacity must be greater than 0");
@@ -54,6 +71,7 @@ export default function SlotDetail({ id, onBack, onNotify }) {
     }
 
     const datePart = slot.slotDate.slice(0, 10);
+    setIsSubmitting(true);
     try {
       const updated = await updateSlot(id, {
         startTime: `${datePart}T${form.startTime}:00Z`,
@@ -69,11 +87,21 @@ export default function SlotDetail({ id, onBack, onNotify }) {
       setIsEditing(false);
       onNotify("Slot updated", "success");
     } catch (err) {
-      setError(err.message);
+      if (isStationAccessDenied(err)) {
+        const message = "Access denied. Your station assignment may have changed.";
+        setError(message);
+        onNotify(message, "error");
+        await onAccessDenied?.();
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   async function handleDelete() {
+    if (isSubmitting) return;
     const confirmed = await confirm({
       title: "Delete Slot",
       message: "This will permanently delete the slot. This cannot be undone.",
@@ -81,17 +109,45 @@ export default function SlotDetail({ id, onBack, onNotify }) {
       destructive: true,
     });
     if (!confirmed) return;
+    setIsSubmitting(true);
     try {
       await deleteSlot(id);
       onNotify("Slot deleted", "success");
       onBack();
     } catch (err) {
-      onNotify(err.message, "error");
+      if (isStationAccessDenied(err)) {
+        const message = "Access denied. Your station assignment may have changed.";
+        onNotify(message, "error");
+        await onAccessDenied?.();
+      } else {
+        onNotify(err.message, "error");
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   if (isLoading) return <p className="text-brand-muted">Loading...</p>;
-  if (!slot) return <p className="text-brand-muted">Slot not found.</p>;
+  if (!slot) {
+    return (
+      <div role="alert" className="rounded-lg border border-brand-border bg-brand-white p-6 shadow-sm">
+        <h2 className="text-lg font-semibold text-brand-black">Unable to load slot</h2>
+        <p className="mt-2 text-sm text-brand-muted">{error || "Slot not found."}</p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={load}
+            className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
+          >
+            Retry
+          </button>
+          <button type="button" onClick={onBack} className="text-sm font-medium text-brand-muted hover:text-brand-black">
+            Back to List
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const isPast = new Date(slot.endTime).getTime() <= now;
   const canModify = !slot.isBooked && !isPast;
@@ -161,16 +217,18 @@ export default function SlotDetail({ id, onBack, onNotify }) {
                 <>
                   <button
                     onClick={handleSave}
-                    className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
+                    disabled={isSubmitting}
+                    className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Save Changes
+                    {isSubmitting ? "Saving..." : "Save Changes"}
                   </button>
                   <button
                     onClick={() => {
                       setIsEditing(false);
                       setError("");
                     }}
-                    className="text-sm font-medium text-brand-muted hover:text-brand-black"
+                    disabled={isSubmitting}
+                    className="text-sm font-medium text-brand-muted hover:text-brand-black disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Cancel
                   </button>
@@ -186,9 +244,10 @@ export default function SlotDetail({ id, onBack, onNotify }) {
 
               <button
                 onClick={handleDelete}
-                className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
+                disabled={isSubmitting}
+                className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Delete
+                {isSubmitting ? "Deleting..." : "Delete"}
               </button>
             </div>
           )}
@@ -196,6 +255,11 @@ export default function SlotDetail({ id, onBack, onNotify }) {
       </div>
     </div>
   );
+}
+
+function isStationAccessDenied(error) {
+  const message = error?.message?.toLowerCase() || "";
+  return error?.response?.status === 403 || message.includes("not assigned") || message.includes("forbidden");
 }
 
 function TimeField({ label, value, editable, onChange }) {

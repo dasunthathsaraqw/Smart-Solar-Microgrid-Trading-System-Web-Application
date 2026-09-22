@@ -16,9 +16,17 @@ function maxDateIso() {
   return d.toISOString().slice(0, 10);
 }
 
-export default function SlotCreateForm({ stations, initialStationId, onCancel, onCreated, onNotify }) {
+export default function SlotCreateForm({
+  stations,
+  initialStationId,
+  fixedStation,
+  onCancel,
+  onCreated,
+  onNotify,
+  onAccessDenied,
+}) {
   const [mode, setMode] = useState("single");
-  const [stationId, setStationId] = useState(initialStationId || stations[0]?.id || "");
+  const [selectedStationId, setSelectedStationId] = useState(initialStationId || stations[0]?.id || "");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,6 +39,7 @@ export default function SlotCreateForm({ stations, initialStationId, onCancel, o
     durationMinutes: 60,
     capacityPerSlotKw: "",
   });
+  const stationId = fixedStation?.id || selectedStationId;
 
   const previewCount = useMemo(() => {
     if (!bulk.dayStart || !bulk.dayEnd) return 0;
@@ -98,7 +107,14 @@ export default function SlotCreateForm({ stations, initialStationId, onCancel, o
 
       setTimeout(onCreated, 1500);
     } catch (err) {
-      setError(err.message);
+      if (isStationAccessDenied(err)) {
+        const message = "Access denied. Your station assignment may have changed.";
+        setError(message);
+        onNotify(message, "error");
+        await onAccessDenied?.();
+      } else {
+        setError(err.message);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -109,24 +125,32 @@ export default function SlotCreateForm({ stations, initialStationId, onCancel, o
       <h2 className="mb-6 text-2xl font-semibold text-brand-black">Add Slots</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-brand-border bg-brand-white p-6">
-        <div>
-          <label className="mb-1 block text-sm font-medium text-brand-black">Station</label>
-          <select
-            required
-            value={stationId}
-            onChange={(e) => setStationId(e.target.value)}
-            className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
-          >
-            <option value="" disabled>
-              Select a station
-            </option>
-            {stations.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.stationName}
+        {fixedStation ? (
+          <div className="rounded-md border border-brand-green bg-brand-green-soft px-3 py-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-brand-green-dark">Assigned station</p>
+            <p className="mt-1 font-medium text-brand-black">{fixedStation.stationName || "Assigned station"}</p>
+            <p className="mt-1 break-all text-xs text-brand-muted">Station ID: {fixedStation.id}</p>
+          </div>
+        ) : (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-brand-black">Station</label>
+            <select
+              required
+              value={stationId}
+              onChange={(e) => setSelectedStationId(e.target.value)}
+              className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
+            >
+              <option value="" disabled>
+                Select a station
               </option>
-            ))}
-          </select>
-        </div>
+              {stations.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.stationName}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         <div className="flex gap-4 text-sm font-medium text-brand-black">
           <label className="flex items-center gap-2">
@@ -230,7 +254,8 @@ export default function SlotCreateForm({ stations, initialStationId, onCancel, o
           <button
             type="button"
             onClick={onCancel}
-            className="text-sm font-medium text-brand-muted hover:text-brand-black"
+            disabled={isSubmitting}
+            className="text-sm font-medium text-brand-muted hover:text-brand-black disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancel
           </button>
@@ -238,6 +263,11 @@ export default function SlotCreateForm({ stations, initialStationId, onCancel, o
       </form>
     </div>
   );
+}
+
+function isStationAccessDenied(error) {
+  const message = error?.message?.toLowerCase() || "";
+  return error?.response?.status === 403 || message.includes("not assigned") || message.includes("forbidden");
 }
 
 function Field({ label, ...inputProps }) {
