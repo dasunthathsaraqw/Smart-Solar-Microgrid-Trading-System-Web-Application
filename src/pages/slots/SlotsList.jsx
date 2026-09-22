@@ -30,8 +30,6 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
   const [slots, setSlots] = useState([]);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  // Captured once at mount rather than calling Date.now() directly during render.
-  const [now] = useState(() => Date.now());
 
   useEffect(() => {
     getStations("active")
@@ -162,8 +160,8 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
               </tr>
             ) : (
               filtered.map((s) => {
-                const isPast = new Date(s.endTime).getTime() <= now;
-                const canModify = !s.isBooked && !isPast;
+                // The API rejects forbidden deletes; its isBooked flag only guides the button.
+                const canModify = !s.isBooked;
                 return (
                   <tr key={s.id} className="border-t border-brand-border">
                     <td className="px-4 py-3">{s.stationName}</td>
@@ -173,7 +171,7 @@ export default function SlotsList({ initialStationId, onAdd, onView, onNotify })
                     <td className="px-4 py-3">{formatDuration(s.startTime, s.endTime)}</td>
                     <td className="px-4 py-3">{s.capacityKw}</td>
                     <td className="px-4 py-3">
-                      <SlotStatusBadge isBooked={s.isBooked} endTime={s.endTime} />
+                      <SlotStatusBadge isBooked={s.isBooked} status={activeTab} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
