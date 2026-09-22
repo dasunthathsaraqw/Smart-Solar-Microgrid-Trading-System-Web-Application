@@ -18,7 +18,8 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // A rejected login is a credential error, not an expired session; keep the form visible.
+    if (error.response?.status === 401 && error.config?.url !== "/auth/login") {
       clearSession();
       window.location.href = "/login";
     }
