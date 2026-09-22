@@ -22,14 +22,7 @@ The dev server prints a local URL (typically `http://localhost:5173`).
 
 ## Configuration
 
-`VITE_API_BASE` (see `.env.example`) points at the backend API, e.g. `https://localhost:7031/api`.
-Since the backend uses the ASP.NET Core HTTPS dev certificate, trust it once with:
-
-```bash
-dotnet dev-certs https --trust
-```
-
-Otherwise the browser will block requests to `https://localhost:7031`.
+`VITE_API_BASE` (see `.env.example`) points at the backend API, e.g. `http://localhost:5151/api`.
 
 ## Default seed login
 
