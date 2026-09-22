@@ -1,8 +1,8 @@
-// UserCreateForm.jsx — Add User form for creating Backoffice/GridOperator accounts.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createUser } from "../../api/users";
+import { getStations } from "../../api/stations";
 
-const initialForm = { name: "", email: "", password: "", confirmPassword: "", role: "GridOperator" };
+const initialForm = { name: "", email: "", password: "", confirmPassword: "", role: "GridOperator", stationId: "" };
 
 function validate(form) {
   if (form.name.trim().length < 2 || form.name.trim().length > 100) return "Name must be 2-100 characters";
@@ -17,6 +17,14 @@ export default function UserCreateForm({ onCancel, onCreated, onNotify }) {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [stations, setStations] = useState([]);
+  const [stationsError, setStationsError] = useState("");
+
+  useEffect(() => {
+    getStations("Active")
+      .then((data) => setStations(Array.isArray(data) ? data : []))
+      .catch((err) => setStationsError(err.message || "Unable to load active stations."));
+  }, []);
 
   function updateField(field) {
     return (event) => setForm((prev) => ({ ...prev, [field]: event.target.value }));
@@ -35,12 +43,18 @@ export default function UserCreateForm({ onCancel, onCreated, onNotify }) {
 
     setIsSubmitting(true);
     try {
-      await createUser({
+      const payload = {
         name: form.name.trim(),
         email: form.email,
         password: form.password,
         role: form.role,
-      });
+      };
+
+      if (form.role === "GridOperator" && form.stationId) {
+        payload.stationId = form.stationId;
+      }
+
+      await createUser(payload);
       setSuccess("User created successfully");
       onNotify("User created successfully", "success");
       setForm(initialForm);
@@ -78,6 +92,30 @@ export default function UserCreateForm({ onCancel, onCreated, onNotify }) {
             <option value="Backoffice">Backoffice</option>
           </select>
         </div>
+
+        {form.role === "GridOperator" && (
+          <div>
+            <label className="mb-1 block text-sm font-medium text-brand-black">Assigned Station</label>
+            {stationsError ? (
+              <p className="text-sm text-red-600">{stationsError}</p>
+            ) : stations.length === 0 ? (
+              <p className="text-sm text-brand-muted">No active stations available.</p>
+            ) : (
+              <select
+                value={form.stationId}
+                onChange={updateField("stationId")}
+                className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
+              >
+                <option value="">No station assigned</option>
+                {stations.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name || s.stationName}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
 
         {error && (
           <p className="border-l-4 border-brand-green bg-brand-white-soft px-3 py-2 text-sm text-brand-black">

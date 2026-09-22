@@ -2,6 +2,7 @@
 // Password is optional on edit: leave blank to keep the current one unchanged (Backoffice-only reset).
 import { useCallback, useEffect, useState } from "react";
 import { deactivateUser, getUserById, reactivateUser, updateUser } from "../../api/users";
+import { getStations } from "../../api/stations";
 import { useConfirm } from "../../components/confirmContext";
 import UserRoleBadge from "./UserRoleBadge";
 import UserStatusBadge from "./UserStatusBadge";
@@ -13,17 +14,25 @@ function formatDateTime(value) {
 export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
   const confirm = useConfirm();
   const [user, setUser] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", role: "GridOperator", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", role: "GridOperator", password: "", stationId: "" });
   const [isEditing, setIsEditing] = useState(Boolean(startInEdit));
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [stations, setStations] = useState([]);
+  const [stationsError, setStationsError] = useState("");
+
+  useEffect(() => {
+    getStations("Active")
+      .then((data) => setStations(Array.isArray(data) ? data : []))
+      .catch((err) => setStationsError(err.message || "Unable to load active stations."));
+  }, []);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await getUserById(id);
       setUser(data);
-      setForm({ name: data.name, email: data.email, role: data.role, password: "" });
+      setForm({ name: data.name, email: data.email, role: data.role, password: "", stationId: data.stationId || "" });
     } catch (err) {
       onNotify(err.message, "error");
     } finally {
@@ -55,9 +64,15 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
       const payload = { name: form.name, email: form.email, role: form.role };
       if (form.password) payload.password = form.password;
 
+      if (form.role === "GridOperator") {
+        payload.stationId = form.stationId || null;
+      } else {
+        payload.stationId = null;
+      }
+
       const updated = await updateUser(id, payload);
       setUser(updated);
-      setForm({ name: updated.name, email: updated.email, role: updated.role, password: "" });
+      setForm({ name: updated.name, email: updated.email, role: updated.role, password: "", stationId: updated.stationId || "" });
       setIsEditing(false);
       onNotify("User updated", "success");
     } catch (err) {
@@ -134,6 +149,40 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
             )}
           </div>
 
+          {(isEditing && form.role === "GridOperator") || (!isEditing && user.role === "GridOperator") ? (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-brand-black">Assigned Station</label>
+              {isEditing ? (
+                stationsError ? (
+                  <p className="text-sm text-red-600">{stationsError}</p>
+                ) : stations.length === 0 ? (
+                  <p className="text-sm text-brand-muted">No active stations available.</p>
+                ) : (
+                  <select
+                    value={form.stationId}
+                    onChange={updateField("stationId")}
+                    className="w-full rounded-md border border-brand-border px-3 py-2 focus:border-brand-green focus:outline-none focus:ring-1 focus:ring-brand-green"
+                  >
+                    <option value="">No station assigned</option>
+                    {stations.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name || s.stationName}
+                      </option>
+                    ))}
+                  </select>
+                )
+              ) : (
+                <p className="rounded-md border border-brand-border bg-brand-white-soft px-3 py-2 text-brand-black">
+                  {user.stationId
+                    ? stations.find((s) => s.id === user.stationId)?.name ||
+                      stations.find((s) => s.id === user.stationId)?.stationName ||
+                      "Station " + user.stationId
+                    : "Not assigned"}
+                </p>
+              )}
+            </div>
+          ) : null}
+
           {isEditing && (
             <div>
               <label className="mb-1 block text-sm font-medium text-brand-black">New Password</label>
@@ -170,7 +219,7 @@ export default function UserDetail({ id, startInEdit, onBack, onNotify }) {
                 <button
                   onClick={() => {
                     setIsEditing(false);
-                    setForm({ name: user.name, email: user.email, role: user.role, password: "" });
+                    setForm({ name: user.name, email: user.email, role: user.role, password: "", stationId: user.stationId || "" });
                     setError("");
                   }}
                   className="text-sm font-medium text-brand-muted hover:text-brand-black"
