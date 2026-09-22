@@ -5,6 +5,7 @@ import { useConfirm } from "../../components/confirmContext";
 import SlotCreateForm from "../slots/SlotCreateForm";
 import SlotDetail from "../slots/SlotDetail";
 import SlotStatusBadge from "../slots/SlotStatusBadge";
+import { formatLocalDate, formatLocalTime } from "../../utils/timeUtils";
 import { useOperatorContext } from "./OperatorContext";
 import OperatorUnassignedState from "./OperatorUnassignedState";
 
@@ -322,9 +323,9 @@ function OperatorSlotsList({ slots, activeTab, isLoading, deletingId, onTabChang
                 const canModify = !slot.isBooked && new Date(slot.endTime).getTime() > now;
                 return (
                   <tr key={slot.id} className="border-t border-brand-border">
-                    <td className="px-4 py-3">{new Date(slot.slotDate).toLocaleDateString()}</td>
-                    <td className="px-4 py-3">{formatTime(slot.startTime)}</td>
-                    <td className="px-4 py-3">{formatTime(slot.endTime)}</td>
+                    <td className="px-4 py-3">{formatLocalDate(slot.startTime)}</td>
+                    <td className="px-4 py-3">{formatLocalTime(slot.startTime)}</td>
+                    <td className="px-4 py-3">{formatLocalTime(slot.endTime)}</td>
                     <td className="px-4 py-3">{formatDuration(slot.startTime, slot.endTime)}</td>
                     <td className="px-4 py-3">{slot.capacityKw}</td>
                     <td className="px-4 py-3">
@@ -387,8 +388,4 @@ function LoadingSlotManagement() {
       <div className="h-96 animate-pulse rounded-lg border border-brand-border bg-brand-white" />
     </div>
   );
-}
-
-function formatTime(value) {
-  return new Date(value).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
