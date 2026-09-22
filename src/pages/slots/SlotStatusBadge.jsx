@@ -1,12 +1,8 @@
-// SlotStatusBadge.jsx — small badge for a slot's available/booked/past status.
-import { useState } from "react";
+// SlotStatusBadge.jsx — displays the API's slot booking flag or requested status filter.
 
-export default function SlotStatusBadge({ isBooked, endTime }) {
-  // Captured once at mount rather than calling Date.now() directly during render.
-  const [now] = useState(() => Date.now());
-  const isPast = new Date(endTime).getTime() <= now;
-
-  if (isPast) {
+// Uses server-filter context for Past/Available and the response's isBooked flag otherwise.
+export default function SlotStatusBadge({ isBooked, status }) {
+  if (status === "past") {
     return (
       <span className="rounded-full border border-brand-muted px-2 py-1 text-xs font-medium text-brand-muted">
         Past
@@ -22,7 +18,9 @@ export default function SlotStatusBadge({ isBooked, endTime }) {
     );
   }
 
-  return (
+  return status === "available" ? (
     <span className="rounded-full bg-brand-green px-2 py-1 text-xs font-medium text-brand-white">Available</span>
+  ) : (
+    <span className="rounded-full bg-brand-green px-2 py-1 text-xs font-medium text-brand-white">Unbooked</span>
   );
 }
