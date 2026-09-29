@@ -13,6 +13,16 @@ export function toUtcIsoString(localDateStr, localTimeStr) {
 }
 
 /**
+ * Formats a time string (e.g. "06:00") into a TimeSpan string ("06:00:00") expected by C# backend TimeSpan DTOs.
+ * @param {string} timeStr - Format "HH:mm"
+ * @returns {string} - Format "HH:mm:ss"
+ */
+export function toTimeSpanString(timeStr) {
+  if (!timeStr) return "00:00:00";
+  return timeStr.length === 5 ? `${timeStr}:00` : timeStr;
+}
+
+/**
  * Extracts the local "HH:mm" string from a UTC ISO string for use in HTML time inputs.
  * @param {string} isoString - e.g. "2026-09-28T04:30:00.000Z"
  * @returns {string} - e.g. "10:00" (if in +05:30)
