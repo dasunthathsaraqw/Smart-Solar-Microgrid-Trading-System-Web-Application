@@ -77,7 +77,7 @@ export default function ReservationQr({ id, onBack }) {
             )}
 
             <p className="mb-4 text-xs text-brand-muted">
-              Show this QR to the Grid Operator at the station to complete the transaction.
+              Show this QR to the Grid Operator at the station for verification and completion with the mobile scanner.
             </p>
 
             <button

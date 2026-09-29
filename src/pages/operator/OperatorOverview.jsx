@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getOperatorDashboard } from "../../api/reports";
 import KpiCard from "../dashboard/KpiCard";
 import PageHeader from "../../components/ui/PageHeader";
@@ -17,14 +17,15 @@ export default function OperatorOverview() {
     error: contextError,
     stationError,
     refreshOperatorContext,
-    notify
   } = useOperatorContext();
 
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
   const [isDashboardLoading, setIsDashboardLoading] = useState(true);
+  const requestSequence = useRef(0);
 
   const loadDashboard = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     if (isUnassigned || !operator?.stationId) {
       setDashboard(null);
       setIsDashboardLoading(false);
@@ -36,8 +37,9 @@ export default function OperatorOverview() {
 
     try {
       const data = await getOperatorDashboard();
-      setDashboard(data);
+      if (requestId === requestSequence.current) setDashboard(data);
     } catch (err) {
+      if (requestId !== requestSequence.current) return;
       setDashboard(null);
       if (err.response?.status === 403) {
         setDashboardError("Access denied. Your station assignment may have changed.");
@@ -45,7 +47,7 @@ export default function OperatorOverview() {
         setDashboardError(err.message || "Unable to load dashboard data.");
       }
     } finally {
-      setIsDashboardLoading(false);
+      if (requestId === requestSequence.current) setIsDashboardLoading(false);
     }
   }, [operator?.stationId, isUnassigned]);
 
@@ -54,12 +56,11 @@ export default function OperatorOverview() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       loadDashboard();
     }
+    return () => { requestSequence.current += 1; };
   }, [contextLoading, loadDashboard]);
 
   const handleRefresh = async () => {
     await refreshOperatorContext();
-    await loadDashboard();
-    notify("Overview refreshed.");
   };
 
   const isLoading = contextLoading || isDashboardLoading;

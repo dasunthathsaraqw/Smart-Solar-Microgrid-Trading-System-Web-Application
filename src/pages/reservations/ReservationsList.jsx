@@ -106,11 +106,15 @@ export default function ReservationsList({ initialStatus, onAdd, onView, onViewQ
   }
 
   async function handleComplete(id) {
-    const confirmed = await confirm({ title: "Complete Reservation", message: "Mark this reservation as completed?", confirmLabel: "Complete" });
+    const confirmed = await confirm({
+      title: "Backoffice Administrative Completion",
+      message: "Complete this reservation administratively? Grid Operators verify and complete physical transfers using the mobile QR scanner.",
+      confirmLabel: "Admin Complete",
+    });
     if (!confirmed) return;
     try {
       await completeReservation(id);
-      onNotify("Reservation completed", "success");
+      onNotify("Reservation administratively completed", "success");
       loadReservations(status, stationId);
     } catch (err) {
       onNotify(err.message, "error");
@@ -127,6 +131,7 @@ export default function ReservationsList({ initialStatus, onAdd, onView, onViewQ
           + New Reservation
         </button>
       } />
+      <p className="mb-4 text-sm text-brand-muted">Grid Operators verify and complete physical transfers with the mobile QR scanner. Admin Complete is a Backoffice administrative action.</p>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <select
@@ -214,7 +219,7 @@ export default function ReservationsList({ initialStatus, onAdd, onView, onViewQ
                   onClick={() => handleComplete(reservation.id)}
                   className="rounded-md bg-brand-green px-3 py-1 text-xs font-medium text-brand-white hover:bg-brand-green-dark"
                 >
-                  Complete
+                  Admin Complete
                 </button>
                 <button
                   type="button"

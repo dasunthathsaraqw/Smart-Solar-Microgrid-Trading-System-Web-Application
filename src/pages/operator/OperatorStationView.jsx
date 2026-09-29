@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getSlots } from "../../api/slots";
 import SlotStatusBadge from "../slots/SlotStatusBadge";
 import { formatLocalDate, formatLocalTime } from "../../utils/timeUtils";
@@ -11,23 +11,24 @@ import SectionCard from "../../components/ui/SectionCard";
 
 export default function OperatorStationView() {
   const {
-    currentUser: operator,
+    stationId,
     assignedStation: station,
     isUnassigned,
     isLoading: contextLoading,
     error: contextError,
     stationError,
     refreshOperatorContext,
-    notify
   } = useOperatorContext();
 
   const [slots, setSlots] = useState([]);
   const [availableSlotsCount, setAvailableSlotsCount] = useState(0);
   const [slotsError, setSlotsError] = useState("");
   const [isSlotsLoading, setIsSlotsLoading] = useState(true);
+  const requestSequence = useRef(0);
 
   const loadSlots = useCallback(async () => {
-    if (isUnassigned || !operator?.stationId) {
+    const requestId = ++requestSequence.current;
+    if (isUnassigned || !stationId) {
       setSlots([]);
       setAvailableSlotsCount(0);
       setIsSlotsLoading(false);
@@ -40,12 +41,14 @@ export default function OperatorStationView() {
     try {
       // The API computes availability using server time and slot state.
       const [slotsData, availableSlots] = await Promise.all([
-        getSlots({ stationId: operator.stationId }),
-        getSlots({ stationId: operator.stationId, status: "available" }),
+        getSlots({ stationId }),
+        getSlots({ stationId, status: "available" }),
       ]);
+      if (requestId !== requestSequence.current) return;
       setSlots(slotsData);
       setAvailableSlotsCount(availableSlots.length);
     } catch (err) {
+      if (requestId !== requestSequence.current) return;
       if (err.response?.status === 403) {
         setSlotsError("Access denied. Your station assignment may have changed.");
       } else {
@@ -54,21 +57,20 @@ export default function OperatorStationView() {
       setSlots([]);
       setAvailableSlotsCount(0);
     } finally {
-      setIsSlotsLoading(false);
+      if (requestId === requestSequence.current) setIsSlotsLoading(false);
     }
-  }, [operator, isUnassigned]);
+  }, [stationId, isUnassigned]);
 
   useEffect(() => {
     if (!contextLoading) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       loadSlots();
     }
+    return () => { requestSequence.current += 1; };
   }, [contextLoading, loadSlots]);
 
   const handleRefresh = async () => {
     await refreshOperatorContext();
-    await loadSlots();
-    notify("Station view refreshed.");
   };
 
   const isLoading = contextLoading || isSlotsLoading;

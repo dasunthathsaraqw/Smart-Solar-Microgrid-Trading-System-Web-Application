@@ -65,7 +65,12 @@ export default function OperatorTransactionHistory() {
         const data = await getOperatorTransactionHistory(params);
         if (active) setResult(data);
       } catch (err) {
-        if (active) setHistoryError(err.message || "Failed to load transaction history.");
+        if (active) {
+          setResult({ items: [], totalCount: 0, page, pageSize, totalPages: 0, hasNextPage: false, hasPreviousPage: false });
+          setHistoryError(err.response?.status === 403
+            ? "Access denied. Your station assignment may have changed."
+            : err.message || "Failed to load transaction history.");
+        }
       } finally {
         if (active) setIsHistoryLoading(false);
       }
@@ -172,7 +177,7 @@ export default function OperatorTransactionHistory() {
             </div>
           </form>
 
-          {error && <ErrorState message={error} onRetry={handleRefresh} />}
+          {error && <ErrorState message={error} onRetry={handleRefresh} retryLabel={error.includes("Access denied") ? "Refresh assignment" : "Retry"} />}
           {!error && !isLoading && <p className="mb-2 text-sm text-brand-muted">
             Showing {rangeStart}–{rangeEnd} of {totalCount} results
           </p>}

@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import Sidebar from "../components/Sidebar";
 import { OperatorProvider, useOperatorContext } from "./operator/OperatorContext";
 import OperatorUnassignedState from "./operator/OperatorUnassignedState";
+import ErrorState from "../components/ui/ErrorState";
 import OperatorOverview from "./operator/OperatorOverview";
 import OperatorSlotManagement from "./operator/OperatorSlotManagement";
 import OperatorStationView from "./operator/OperatorStationView";
@@ -50,20 +51,13 @@ export default function DashboardOperator() {
 
 // Uses the latest /auth/me station context to guard every operator section consistently.
 function OperatorPageGate({ children }) {
-  const { isLoading, isUnassigned, error, refreshOperatorContext } = useOperatorContext();
+  const { isLoading, isUnassigned, error, stationError, stationErrorStatus, refreshOperatorContext } = useOperatorContext();
 
   if (isLoading) return <p role="status" className="text-brand-muted">Loading operator context...</p>;
-  if (error) {
+  if (error || stationErrorStatus === 403 || stationErrorStatus === 404) {
     return (
-      <div role="alert" className="rounded-lg border border-brand-border bg-brand-white p-6">
-        <p className="text-sm text-brand-black">{error}</p>
-        <button
-          type="button"
-          onClick={refreshOperatorContext}
-          className="mt-4 text-sm font-medium text-brand-green hover:underline"
-        >
-          Retry
-        </button>
+      <div className="rounded-lg border border-brand-border bg-brand-white p-6">
+        <ErrorState message={error || stationError} onRetry={refreshOperatorContext} retryLabel="Refresh assignment" />
       </div>
     );
   }
