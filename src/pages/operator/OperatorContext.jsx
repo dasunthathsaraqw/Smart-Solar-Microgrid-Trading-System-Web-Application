@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, useEffect } from "react";
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
 import { getCurrentUser } from "../../api/auth";
 import { getStationById } from "../../api/stations";
 import { updateSessionUser } from "../../utils/auth";
@@ -24,23 +24,35 @@ export function OperatorProvider({ children }) {
   const [isUnassigned, setIsUnassigned] = useState(false);
   const [error, setError] = useState("");
   const [stationError, setStationError] = useState("");
+  const [stationErrorStatus, setStationErrorStatus] = useState(null);
   const [toast, setToast] = useState(null);
+  const requestSequence = useRef(0);
 
   const notify = useCallback((message, type = "success") => {
     setToast({ message, type });
   }, []);
 
   const refreshOperatorContext = useCallback(async () => {
+    const requestId = ++requestSequence.current;
     setIsLoading(true);
     setError("");
     setStationError("");
+    setStationErrorStatus(null);
     setIsUnassigned(false);
+    setAssignedStation(null);
 
     try {
       // /auth/me returns the latest persisted assignment; the JWT has no station claim.
       const user = await getCurrentUser();
+      if (requestId !== requestSequence.current) return;
       updateSessionUser(user);
       setCurrentUser(user);
+
+      if (user.role !== "GridOperator") {
+        setStationId(null);
+        setError("Access denied. This account is not a Grid Operator.");
+        return;
+      }
 
       if (!user.stationId) {
         setStationId(null);
@@ -54,29 +66,43 @@ export function OperatorProvider({ children }) {
 
       try {
         const station = await getStationById(user.stationId);
+        if (requestId !== requestSequence.current) return;
         setAssignedStation(station);
       } catch (err) {
+        if (requestId !== requestSequence.current) return;
         setAssignedStation(null);
-        setStationError(err.message || "Station details are temporarily unavailable.");
+        const status = err.response?.status;
+        setStationErrorStatus(status ?? null);
+        setStationError(status === 404
+          ? "Your assigned station was not found. Refresh your assignment or contact Backoffice."
+          : status === 403
+            ? "Access denied to your assigned station. Refresh your assignment or contact Backoffice."
+            : err.message || "Station details are temporarily unavailable.");
       }
 
     } catch (err) {
+      if (requestId !== requestSequence.current) return;
       setCurrentUser(null);
       setStationId(null);
       setAssignedStation(null);
-      if (err.response?.status === 403 || err.message === "Grid Operator is not assigned to a station.") {
+      if (err.message === "Grid Operator is not assigned to a station.") {
         setIsUnassigned(true);
+      } else if (err.response?.status === 401) {
+        setError("Your session has expired. Please sign in again.");
+      } else if (err.response?.status === 403) {
+        setError("Access denied. Your account cannot open the Grid Operator portal.");
       } else {
         setError(err.message || "Failed to authenticate or load operator context.");
       }
     } finally {
-      setIsLoading(false);
+      if (requestId === requestSequence.current) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial load of context
     refreshOperatorContext();
+    return () => { requestSequence.current += 1; };
   }, [refreshOperatorContext]);
 
   const value = {
@@ -88,6 +114,7 @@ export function OperatorProvider({ children }) {
     isLoading,
     error,
     stationError,
+    stationErrorStatus,
     refreshOperatorContext,
     notify
   };

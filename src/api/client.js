@@ -28,6 +28,8 @@ apiClient.interceptors.response.use(
       error.response?.data?.error ||
       error.message ||
       "Something went wrong. Please try again.";
-    return Promise.reject(new Error(message));
+    // Keep Axios response/status metadata for callers that handle 403/404 distinctly.
+    error.message = message;
+    return Promise.reject(error);
   }
 );

@@ -15,6 +15,7 @@ export default function OperatorTransferDetail({ reservationId, onClose }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     setError("");
+    setReservation(null);
 
     getReservationById(reservationId)
       .then((data) => {
@@ -25,6 +26,7 @@ export default function OperatorTransferDetail({ reservationId, onClose }) {
       })
       .catch((err) => {
         if (isMounted) {
+          setReservation(null);
           if (err.response?.status === 403) {
             setError("You do not have access to view this reservation.");
           } else if (err.response?.status === 404) {

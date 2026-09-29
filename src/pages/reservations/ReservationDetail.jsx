@@ -82,11 +82,15 @@ export default function ReservationDetail({ id, onBack, onViewQr, onNotify }) {
   }
 
   async function handleComplete() {
-    const confirmed = await confirm({ title: "Complete Reservation", message: "Mark this reservation as completed?", confirmLabel: "Complete" });
+    const confirmed = await confirm({
+      title: "Backoffice Administrative Completion",
+      message: "Complete this reservation administratively? Grid Operators verify and complete physical transfers using the mobile QR scanner.",
+      confirmLabel: "Admin Complete",
+    });
     if (!confirmed) return;
     try {
       await completeReservation(id);
-      onNotify("Reservation completed", "success");
+      onNotify("Reservation administratively completed", "success");
       load();
     } catch (err) {
       setError(err.message);
@@ -248,6 +252,7 @@ export default function ReservationDetail({ id, onBack, onViewQr, onNotify }) {
 
             {reservation.status === "Approved" && (
               <>
+                <p className="w-full text-sm text-brand-muted">Physical verification and completion by a Grid Operator uses the mobile QR scanner. Admin Complete is for Backoffice administrative use.</p>
                 <button
                   onClick={() => onViewQr(id)}
                   className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
@@ -258,7 +263,7 @@ export default function ReservationDetail({ id, onBack, onViewQr, onNotify }) {
                   onClick={handleComplete}
                   className="rounded-md bg-brand-green px-4 py-2 text-sm font-medium text-brand-white hover:bg-brand-green-dark"
                 >
-                  Complete
+                  Admin Complete
                 </button>
                 <button
                   onClick={handleCancel}

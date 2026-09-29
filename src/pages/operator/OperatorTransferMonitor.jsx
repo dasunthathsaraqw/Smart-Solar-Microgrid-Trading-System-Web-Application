@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { approveReservation, getReservations } from "../../api/reservations";
 import ReservationStatusBadge from "../reservations/ReservationStatusBadge";
 import OperatorTransferDetail from "./OperatorTransferDetail";
@@ -30,10 +30,13 @@ export default function OperatorTransferMonitor() {
   const [actionError, setActionError] = useState("");
   const [isProcessing, setIsProcessing] = useState(null);
   const [selectedReservationId, setSelectedReservationId] = useState(null);
+  const requestSequence = useRef(0);
 
   const loadTransfers = useCallback(async (status) => {
+    const requestId = ++requestSequence.current;
     if (isUnassigned) {
       setReservations([]);
+      setSelectedReservationId(null);
       setIsTransfersLoading(false);
       return;
     }
@@ -41,11 +44,16 @@ export default function OperatorTransferMonitor() {
     setIsTransfersLoading(true);
     setTransfersError("");
     setActionError("");
+    setReservations([]);
+    setSelectedReservationId(null);
 
     try {
       const data = await getReservations({ status });
-      setReservations(Array.isArray(data) ? data : data.items || []);
+      if (requestId === requestSequence.current) {
+        setReservations(Array.isArray(data) ? data : data.items || []);
+      }
     } catch (err) {
+      if (requestId !== requestSequence.current) return;
       if (err.response?.status === 403) {
         setTransfersError("Access denied. Your station assignment may have changed.");
       } else {
@@ -53,16 +61,17 @@ export default function OperatorTransferMonitor() {
       }
       setReservations([]);
     } finally {
-      setIsTransfersLoading(false);
+      if (requestId === requestSequence.current) setIsTransfersLoading(false);
     }
   }, [isUnassigned]);
 
   useEffect(() => {
-    if (!contextLoading) {
+    if (!contextLoading && !contextError) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       loadTransfers(activeTab);
     }
-  }, [activeTab, contextLoading, loadTransfers]);
+    return () => { requestSequence.current += 1; };
+  }, [activeTab, contextLoading, contextError, loadTransfers]);
 
   async function handleApprove(id) {
     if (isProcessing) return;
@@ -81,8 +90,6 @@ export default function OperatorTransferMonitor() {
 
   const handleRefresh = async () => {
     await refreshOperatorContext();
-    await loadTransfers(activeTab);
-    notify("Transfer monitor refreshed.");
   };
 
   const isLoading = contextLoading || isTransfersLoading;
