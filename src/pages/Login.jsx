@@ -1,6 +1,6 @@
 // Login.jsx — email/password login form. Redirects by role on success.
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { login } from "../api/auth";
 import { clearSession, saveSession, dashboardPathForRole } from "../utils/auth";
 import loginImage from "../assets/img/login-screen-image-v2.png";
@@ -94,14 +94,8 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="mt-4 text-center text-sm text-brand-muted">
-            Need an account?{" "}
-            <Link
-              to="/create-account"
-              className="font-medium text-brand-green hover:underline"
-            >
-              Create Account
-            </Link>
+          <p className="mt-4 text-center text-xs text-brand-muted">
+            Web access is restricted to Backoffice & Grid Operator accounts created by System Administrators. Prosumers must register on the Mobile App.
           </p>
         </div>
       </div>
