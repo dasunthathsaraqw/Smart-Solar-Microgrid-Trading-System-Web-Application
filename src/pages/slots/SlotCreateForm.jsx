@@ -3,7 +3,7 @@
 // the same way the rest of this app exchanges ISO timestamps with the API.
 import { useMemo, useState } from "react";
 import { bulkCreateSlots, createSlot } from "../../api/slots";
-import { toUtcIsoString } from "../../utils/timeUtils";
+import { toUtcIsoString, toTimeSpanString } from "../../utils/timeUtils";
 
 const DURATION_OPTIONS = [30, 45, 60, 90, 120];
 
@@ -97,8 +97,8 @@ export default function SlotCreateForm({
         const result = await bulkCreateSlots({
           stationId,
           slotDate: `${bulk.date}T00:00:00Z`,
-          startTime: toUtcIsoString(bulk.date, bulk.dayStart),
-          endTime: toUtcIsoString(bulk.date, bulk.dayEnd),
+          startTime: toTimeSpanString(bulk.dayStart),
+          endTime: toTimeSpanString(bulk.dayEnd),
           slotDurationMinutes: Number(bulk.durationMinutes),
           capacityPerSlotKw: Number(bulk.capacityPerSlotKw),
         });
